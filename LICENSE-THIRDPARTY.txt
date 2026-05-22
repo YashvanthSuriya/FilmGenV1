@@ -1,0 +1,45 @@
+================================================================================
+CINE STUDIO - Third-Party Open Source Licenses
+================================================================================
+
+This local MVP uses the following open-source packages directly:
+
+1. OMNICLIP
+   Package: @omnimedia/omniclip
+   Installed alias: omniclip
+   Repository: https://github.com/omni-media/omniclip
+   Repository license: MIT
+   npm package metadata license: ISC
+   Usage: Browser-native editor and timeline custom elements.
+
+2. REACT
+   License: MIT
+   Usage: UI framework.
+
+3. ZUSTAND
+   License: MIT
+   Usage: Studio state management.
+
+4. TAILWIND CSS
+   License: MIT
+   Usage: Utility CSS build pipeline.
+
+5. LUCIDE REACT
+   License: ISC
+   Usage: Interface icons.
+
+6. TONE.JS
+   License: MIT
+   Usage: Future browser audio engine adapter.
+
+7. WAVESURFER.JS
+   License: BSD-3-Clause
+   Usage: Future waveform visualization adapter.
+
+8. VITE
+   License: MIT
+   Usage: Development server and build tool.
+
+================================================================================
+No GPL or MPL dependencies are intentionally used by this MVP.
+================================================================================
