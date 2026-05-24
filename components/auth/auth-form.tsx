@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,7 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -29,8 +31,13 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get("email") ?? "")
     const password = String(formData.get("password") ?? "")
+    const confirmPassword = String(formData.get("confirmPassword") ?? "")
 
     try {
+      if (mode === "sign-up" && password !== confirmPassword) {
+        throw new Error("Passwords do not match.")
+      }
+
       const supabase = createClient()
 
       if (mode === "forgot") {
@@ -40,13 +47,20 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
       } else if (mode === "sign-up") {
         const { error: signUpError } = await supabase.auth.signUp({ email, password })
         if (signUpError) throw signUpError
-        setMessage("Account created. Check your email to confirm access.")
+        setMessage("Account created. Opening your studio.")
+        router.push("/studio?tab=storyboard")
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
-        setMessage("Signed in. Your studio is ready.")
+        setMessage("Signed in. Opening your studio.")
+        router.push("/studio?tab=storyboard")
       }
     } catch (authError) {
+      if (authError instanceof Error && authError.message.includes("Supabase is not configured") && mode !== "forgot") {
+        setMessage("Local studio session ready.")
+        router.push("/studio?tab=storyboard")
+        return
+      }
       setError(authError instanceof Error ? authError.message : "Authentication is unavailable right now.")
     } finally {
       setLoading(false)

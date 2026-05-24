@@ -1,16 +1,52 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import type {
+  AudioGenre,
+  AudioIntensity,
+  AudioMixerState,
   CameraConfig,
   Character,
+  ColorManualControls,
+  ColorPreviewMode,
+  ColorScopeType,
+  ColorWheelKey,
+  ColorWheelValue,
   CreditTransaction,
+  CurveChannel,
+  FilmLutName,
+  EditingState,
   GeneratedMedia,
   PlanTier,
+  ProjectAsset,
+  SfxItem,
   StoryboardFrame,
   StudioTab,
   StyleCard,
+  TextOverlayClip,
+  TimelineClip,
+  TimelineTransitionType,
+  VoiceoverItem,
   WorkspaceEdge,
   WorkspaceNode
 } from "@/lib/types"
+import { applyTransition, removeTransition } from "@/lib/editing/transitions"
+import {
+  addClip,
+  createClipFromMedia,
+  createDefaultTextOverlayClip,
+  createInitialEditingState,
+  createTimelineClip,
+  deleteClip,
+  duplicateClip,
+  ensureEditingStateDefaults,
+  moveClip,
+  reorderTracks,
+  resolveClipStart,
+  splitClip,
+  trimClip,
+  updateClip
+} from "@/lib/editing/timeline"
+import { assetToGeneratedMedia, createClipFromAsset, createImportedAsset, createStoryboardAsset, createWorkspaceAsset, defaultTrackForAsset } from "@/lib/media/assets"
 
 export interface ProjectStore {
   projectId: string
@@ -24,8 +60,10 @@ export interface ProjectStore {
   storyboardFrames: StoryboardFrame[]
   workspaceNodes: WorkspaceNode[]
   workspaceEdges: WorkspaceEdge[]
+  assets: ProjectAsset[]
   generatedMedia: GeneratedMedia[]
   cameraConfig: CameraConfig
+  editingState: EditingState
   setActiveTab: (tab: StudioTab) => void
   updateCredits: (amount: number) => void
   spendCredits: (amount: number, description: string) => boolean
@@ -37,6 +75,44 @@ export interface ProjectStore {
   updateStoryboardFrame: (id: string, frame: Partial<StoryboardFrame>) => void
   duplicateStoryboardFrame: (id: string) => void
   deleteStoryboardFrame: (id: string) => void
+  addImportedAsset: (file: File) => ProjectAsset
+  addStoryboardAsset: (frameId: string) => ProjectAsset | null
+  publishWorkspaceAsset: (node: WorkspaceNode) => ProjectAsset | null
+  sendStoryboardFrameToWorkspace: (frameId: string) => { nodes: WorkspaceNode[]; edges: WorkspaceEdge[]; selectedNodeId: string } | null
+  addAssetToTimeline: (assetId: string, trackId?: string, start?: number, url?: string) => void
+  renameTrack: (trackId: string, name: string) => void
+  toggleTrack: (trackId: string, key: "muted" | "solo" | "locked" | "expanded") => void
+  reorderTimelineTracks: (activeId: string, overId: string) => void
+  addMediaClipToTimeline: (mediaId: string, trackId: string, start: number) => void
+  addTimelineClip: (clip: TimelineClip) => void
+  updateTimelineClip: (clipId: string, patch: Partial<TimelineClip>) => void
+  moveTimelineClip: (clipId: string, trackId: string, start: number) => void
+  trimTimelineClip: (clipId: string, edge: "start" | "end", position: number) => void
+  splitTimelineClip: (clipId: string, position: number) => void
+  duplicateTimelineClip: (clipId: string) => void
+  deleteTimelineClip: (clipId: string) => void
+  selectTimelineClip: (clipId: string | null) => void
+  setPlayheadPosition: (position: number) => void
+  setPlaybackState: (playbackState: EditingState["playbackState"]) => void
+  setPlaybackSpeed: (playbackSpeed: number) => void
+  setTimelineVolume: (volume: number) => void
+  setTimelineZoom: (timelineZoom: number) => void
+  applyTimelineTransition: (fromClipId: string, toClipId: string, type: TimelineTransitionType) => void
+  removeTimelineTransition: (transitionId: string) => void
+  updateColorWheel: (wheel: ColorWheelKey, value: Partial<ColorWheelValue>) => void
+  updateColorManualControls: (patch: Partial<ColorManualControls>) => void
+  selectLut: (name: FilmLutName) => void
+  setLutIntensity: (intensity: number) => void
+  addCurvePoint: (channel: CurveChannel, point: { x: number; y: number }) => void
+  updateCurvePoint: (channel: CurveChannel, pointId: string, point: { x: number; y: number }) => void
+  removeCurvePoint: (channel: CurveChannel, pointId: string) => void
+  setActiveScope: (scope: ColorScopeType) => void
+  setColorPreviewMode: (mode: ColorPreviewMode) => void
+  generateMockMusic: (input: { prompt: string; duration: number; genre: AudioGenre; intensity: AudioIntensity }) => void
+  addMockSfxToTimeline: (sfx: SfxItem, start?: number) => void
+  generateMockVoiceover: (input: { script: string; voice: string; speed: number; pitch: number }) => void
+  updateAudioMixer: (patch: Partial<AudioMixerState>) => void
+  updateTextOverlay: (clipId: string, patch: Partial<TextOverlayClip>) => void
 }
 
 export const defaultCameraConfig: CameraConfig = {
@@ -47,7 +123,85 @@ export const defaultCameraConfig: CameraConfig = {
   fps: 24
 }
 
-export const useProjectStore = create<ProjectStore>((set) => ({
+function upsertAsset(assets: ProjectAsset[], asset: ProjectAsset) {
+  return [asset, ...assets.filter((item) => item.id !== asset.id)]
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function sortCurvePoints<T extends { x: number }>(points: T[]) {
+  return [...points].sort((a, b) => a.x - b.x)
+}
+
+export function createWorkspaceNodesFromFrame(frame: StoryboardFrame, index: number) {
+  const baseX = 120 + index * 60
+  const baseY = 120 + index * 40
+  const promptNode: WorkspaceNode = {
+    id: `storyboard-prompt-${frame.id}-${Date.now()}`,
+    type: "prompt",
+    position: { x: baseX, y: baseY },
+    data: {
+      label: frame.title,
+      prompt: frame.prompt,
+      sourcePrompt: frame.prompt,
+      storyboardFrameId: frame.id,
+      aspectRatio: frame.aspectRatio,
+      referenceImages: frame.referenceImages,
+      status: "idle"
+    }
+  }
+  const cameraNode: WorkspaceNode = {
+    id: `storyboard-camera-${frame.id}-${Date.now()}`,
+    type: "cameraConfig",
+    position: { x: baseX, y: baseY + 260 },
+    data: {
+      label: `${frame.shotType} ${frame.cameraMovement}`,
+      camera: {
+        ...defaultCameraConfig,
+        movement: frame.cameraMovement,
+        angle: frame.shotType
+      },
+      storyboardFrameId: frame.id,
+      status: "idle"
+    }
+  }
+  const outputNode: WorkspaceNode = {
+    id: `storyboard-output-${frame.id}-${Date.now()}`,
+    type: "imageOutput",
+    position: { x: baseX + 460, y: baseY + 90 },
+    data: {
+      label: `${frame.title} Output`,
+      sourcePrompt: frame.prompt,
+      storyboardFrameId: frame.id,
+      previewUrl: frame.imageUrl,
+      output: "Storyboard frame ready to publish",
+      status: "idle"
+    }
+  }
+  const edges: WorkspaceEdge[] = [
+    {
+      id: `edge-${promptNode.id}-${outputNode.id}`,
+      source: promptNode.id,
+      target: outputNode.id,
+      type: "custom",
+      animated: true,
+      data: { status: "idle" }
+    },
+    {
+      id: `edge-${cameraNode.id}-${outputNode.id}`,
+      source: cameraNode.id,
+      target: outputNode.id,
+      type: "custom",
+      animated: true,
+      data: { status: "idle" }
+    }
+  ]
+  return { nodes: [promptNode, cameraNode, outputNode], edges, selectedNodeId: outputNode.id }
+}
+
+export const useProjectStore = create<ProjectStore>()(persist((set) => ({
   projectId: "local-phase-1",
   projectName: "Untitled Project",
   activeTab: "storyboard",
@@ -59,8 +213,10 @@ export const useProjectStore = create<ProjectStore>((set) => ({
   storyboardFrames: [],
   workspaceNodes: [],
   workspaceEdges: [],
+  assets: [],
   generatedMedia: [],
   cameraConfig: defaultCameraConfig,
+  editingState: createInitialEditingState(),
   setActiveTab: (activeTab) => set({ activeTab }),
   updateCredits: (amount) => set((state) => ({ credits: Math.max(0, state.credits + amount) })),
   spendCredits: (amount, description) => {
@@ -121,5 +277,507 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       return { storyboardFrames: next }
     }),
   deleteStoryboardFrame: (id) =>
-    set((state) => ({ storyboardFrames: state.storyboardFrames.filter((frame) => frame.id !== id) }))
+    set((state) => ({ storyboardFrames: state.storyboardFrames.filter((frame) => frame.id !== id) })),
+  addImportedAsset: (file) => {
+    const asset = createImportedAsset(file)
+    set((state) => ({
+      assets: upsertAsset(state.assets, asset),
+      generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset.id)]
+    }))
+    return asset
+  },
+  addStoryboardAsset: (frameId) => {
+    let asset: ProjectAsset | null = null
+    set((state) => {
+      const frame = state.storyboardFrames.find((item) => item.id === frameId)
+      if (!frame) return state
+      asset = createStoryboardAsset(frame)
+      return {
+        assets: upsertAsset(state.assets, asset),
+        generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset!.id)]
+      }
+    })
+    return asset
+  },
+  publishWorkspaceAsset: (node) => {
+    if (node.type !== "imageOutput" && node.type !== "videoOutput") return null
+    const asset = createWorkspaceAsset(node)
+    set((state) => ({
+      assets: upsertAsset(state.assets, asset),
+      generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset.id)]
+    }))
+    return asset
+  },
+  sendStoryboardFrameToWorkspace: (frameId) => {
+    let result: { nodes: WorkspaceNode[]; edges: WorkspaceEdge[]; selectedNodeId: string } | null = null
+    set((state) => {
+      const frame = state.storyboardFrames.find((item) => item.id === frameId)
+      if (!frame) return state
+      result = createWorkspaceNodesFromFrame(frame, state.workspaceNodes.length)
+      const asset = createStoryboardAsset(frame)
+      const workspaceAsset = createWorkspaceAsset(result.nodes[2])
+      return {
+        workspaceNodes: [...state.workspaceNodes, ...result.nodes],
+        workspaceEdges: [...state.workspaceEdges, ...result.edges],
+        assets: upsertAsset(upsertAsset(state.assets, workspaceAsset), asset),
+        generatedMedia: [
+          assetToGeneratedMedia(workspaceAsset),
+          assetToGeneratedMedia(asset),
+          ...state.generatedMedia.filter((item) => item.assetId !== asset.id && item.assetId !== workspaceAsset.id)
+        ]
+      }
+    })
+    return result
+  },
+  addAssetToTimeline: (assetId, trackId, start, url) =>
+    set((state) => {
+      const asset = state.assets.find((item) => item.id === assetId)
+      if (!asset) return state
+      const track = trackId
+        ? state.editingState.tracks.find((item) => item.id === trackId)
+        : defaultTrackForAsset(asset, state.editingState.tracks)
+      if (!track || track.locked) return state
+      if (asset.type === "audio" && track.type !== "audio") return state
+      if (asset.type !== "audio" && track.type !== "video") return state
+      const trackClips = state.editingState.clips.filter((item) => item.trackId === track.id)
+      const appendStart = trackClips.length > 0 ? Math.max(...trackClips.map((item) => item.start + item.duration)) + 0.25 : 0
+      const draftClip = createClipFromAsset(asset, track.id, start === undefined ? appendStart : start, url)
+      const clip = {
+        ...draftClip,
+        start: resolveClipStart(state.editingState.clips, draftClip.id, track.id, draftClip.start, draftClip.duration)
+      }
+      return {
+        editingState: {
+          ...state.editingState,
+          clips: addClip(state.editingState.clips, clip),
+          selectedClipId: clip.id
+        }
+      }
+    }),
+  renameTrack: (trackId, name) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        tracks: state.editingState.tracks.map((track) => (track.id === trackId ? { ...track, name } : track))
+      }
+    })),
+  toggleTrack: (trackId, key) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        tracks: state.editingState.tracks.map((track) => (track.id === trackId ? { ...track, [key]: !track[key] } : track))
+      }
+    })),
+  reorderTimelineTracks: (activeId, overId) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        tracks: reorderTracks(state.editingState.tracks, activeId, overId)
+      }
+    })),
+  addMediaClipToTimeline: (mediaId, trackId, start) =>
+    set((state) => {
+      const media = state.generatedMedia.find((item) => item.id === mediaId)
+      const track = state.editingState.tracks.find((item) => item.id === trackId)
+      if (!media || !track || track.locked) return state
+      const clip = createClipFromMedia(media, trackId, start)
+      return {
+        editingState: {
+          ...state.editingState,
+          clips: addClip(state.editingState.clips, clip),
+          selectedClipId: clip.id
+        }
+      }
+    }),
+  addTimelineClip: (clip) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: addClip(state.editingState.clips, clip),
+        selectedClipId: clip.id
+      }
+    })),
+  updateTimelineClip: (clipId, patch) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: updateClip(state.editingState.clips, clipId, patch)
+      }
+    })),
+  moveTimelineClip: (clipId, trackId, start) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: moveClip(state.editingState.clips, state.editingState.tracks, clipId, trackId, start)
+      }
+    })),
+  trimTimelineClip: (clipId, edge, position) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: trimClip(state.editingState.clips, clipId, edge, position)
+      }
+    })),
+  splitTimelineClip: (clipId, position) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: splitClip(state.editingState.clips, clipId, position)
+      }
+    })),
+  duplicateTimelineClip: (clipId) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: duplicateClip(state.editingState.clips, clipId)
+      }
+    })),
+  deleteTimelineClip: (clipId) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: deleteClip(state.editingState.clips, clipId),
+        transitions: state.editingState.transitions.filter((transition) => transition.fromClipId !== clipId && transition.toClipId !== clipId),
+        selectedClipId: state.editingState.selectedClipId === clipId ? null : state.editingState.selectedClipId
+      }
+    })),
+  selectTimelineClip: (selectedClipId) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        selectedClipId
+      }
+    })),
+  setPlayheadPosition: (playheadPosition) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        playheadPosition: Math.max(0, playheadPosition)
+      }
+    })),
+  setPlaybackState: (playbackState) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        playbackState
+      }
+    })),
+  setPlaybackSpeed: (playbackSpeed) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        playbackSpeed
+      }
+    })),
+  setTimelineVolume: (volume) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        volume: Math.min(100, Math.max(0, volume))
+      }
+    })),
+  setTimelineZoom: (timelineZoom) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        timelineZoom: Math.min(3, Math.max(0.5, timelineZoom))
+      }
+    })),
+  applyTimelineTransition: (fromClipId, toClipId, type) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        transitions: applyTransition(state.editingState.transitions, state.editingState.clips, fromClipId, toClipId, type)
+      }
+    })),
+  removeTimelineTransition: (transitionId) =>
+    set((state) => ({
+      editingState: {
+        ...state.editingState,
+        transitions: removeTransition(state.editingState.transitions, transitionId)
+      }
+    })),
+  updateColorWheel: (wheel, value) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            [wheel]: {
+              ...editingState.colorGrading[wheel],
+              ...value,
+              hue: clamp(value.hue ?? editingState.colorGrading[wheel].hue, 0, 360),
+              saturation: clamp(value.saturation ?? editingState.colorGrading[wheel].saturation, 0, 100),
+              luminance: clamp(value.luminance ?? editingState.colorGrading[wheel].luminance, -100, 100)
+            }
+          }
+        }
+      }
+    }),
+  updateColorManualControls: (patch) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            manual: {
+              ...editingState.colorGrading.manual,
+              ...patch,
+              exposure: clamp(patch.exposure ?? editingState.colorGrading.manual.exposure, -2, 2),
+              contrast: clamp(patch.contrast ?? editingState.colorGrading.manual.contrast, -50, 50),
+              highlights: clamp(patch.highlights ?? editingState.colorGrading.manual.highlights, -100, 100),
+              shadows: clamp(patch.shadows ?? editingState.colorGrading.manual.shadows, -100, 100),
+              saturation: clamp(patch.saturation ?? editingState.colorGrading.manual.saturation, -100, 100),
+              temperature: clamp(patch.temperature ?? editingState.colorGrading.manual.temperature, 2000, 10000),
+              tint: clamp(patch.tint ?? editingState.colorGrading.manual.tint, -50, 50),
+              filmGrain: clamp(patch.filmGrain ?? editingState.colorGrading.manual.filmGrain, 0, 100),
+              vignette: clamp(patch.vignette ?? editingState.colorGrading.manual.vignette, 0, 100)
+            }
+          }
+        }
+      }
+    }),
+  selectLut: (name) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            lut: { ...editingState.colorGrading.lut, name }
+          }
+        }
+      }
+    }),
+  setLutIntensity: (intensity) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            lut: { ...editingState.colorGrading.lut, intensity: clamp(intensity, 0, 100) }
+          }
+        }
+      }
+    }),
+  addCurvePoint: (channel, point) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const curve = editingState.colorGrading.curves[channel]
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            curves: {
+              ...editingState.colorGrading.curves,
+              [channel]: sortCurvePoints([
+                ...curve,
+                {
+                  id: `curve-${channel}-${Date.now()}-${curve.length}`,
+                  x: clamp(point.x, 0, 1),
+                  y: clamp(point.y, 0, 1)
+                }
+              ])
+            }
+          }
+        }
+      }
+    }),
+  updateCurvePoint: (channel, pointId, point) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            curves: {
+              ...editingState.colorGrading.curves,
+              [channel]: sortCurvePoints(
+                editingState.colorGrading.curves[channel].map((item) =>
+                  item.id === pointId ? { ...item, x: clamp(point.x, 0, 1), y: clamp(point.y, 0, 1) } : item
+                )
+              )
+            }
+          }
+        }
+      }
+    }),
+  removeCurvePoint: (channel, pointId) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const curve = editingState.colorGrading.curves[channel]
+      if (curve.length <= 2) return { editingState }
+      return {
+        editingState: {
+          ...editingState,
+          colorGrading: {
+            ...editingState.colorGrading,
+            curves: {
+              ...editingState.colorGrading.curves,
+              [channel]: curve.filter((point) => point.id !== pointId)
+            }
+          }
+        }
+      }
+    }),
+  setActiveScope: (activeScope) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return { editingState: { ...editingState, colorGrading: { ...editingState.colorGrading, activeScope } } }
+    }),
+  setColorPreviewMode: (previewMode) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return { editingState: { ...editingState, colorGrading: { ...editingState.colorGrading, previewMode } } }
+    }),
+  generateMockMusic: (input) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const track = {
+        id: `music-${Date.now()}-${editingState.audioState.musicTracks.length}`,
+        prompt: input.prompt,
+        duration: clamp(input.duration, 5, 180),
+        genre: input.genre,
+        intensity: input.intensity,
+        createdAt: new Date().toISOString()
+      }
+      return {
+        editingState: {
+          ...editingState,
+          audioState: {
+            ...editingState.audioState,
+            musicTracks: [track, ...editingState.audioState.musicTracks]
+          }
+        }
+      }
+    }),
+  addMockSfxToTimeline: (sfx, start = 0) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const audioTrack = editingState.tracks.find((track) => track.type === "audio" && !track.locked)
+      if (!audioTrack) return { editingState }
+      const clip = createTimelineClip({
+        id: `clip-sfx-${sfx.id}-${Date.now()}`,
+        trackId: audioTrack.id,
+        type: "audio",
+        name: sfx.name,
+        start,
+        duration: sfx.duration,
+        color: "var(--accent-amber)"
+      })
+      return {
+        editingState: {
+          ...editingState,
+          clips: addClip(editingState.clips, clip),
+          selectedClipId: clip.id,
+          audioState: {
+            ...editingState.audioState,
+            sfx: [sfx, ...editingState.audioState.sfx.filter((item) => item.id !== sfx.id)]
+          }
+        }
+      }
+    }),
+  generateMockVoiceover: (input) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const words = input.script.trim().split(/\s+/).filter(Boolean).length
+      const voiceover: VoiceoverItem = {
+        id: `voiceover-${Date.now()}-${editingState.audioState.voiceovers.length}`,
+        script: input.script,
+        voice: input.voice,
+        duration: Math.max(1, Math.round((words / 150) * 60)),
+        speed: clamp(input.speed, 0.5, 2),
+        pitch: clamp(input.pitch, -12, 12),
+        createdAt: new Date().toISOString()
+      }
+      return {
+        editingState: {
+          ...editingState,
+          audioState: {
+            ...editingState.audioState,
+            voiceovers: [voiceover, ...editingState.audioState.voiceovers]
+          }
+        }
+      }
+    }),
+  updateAudioMixer: (patch) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      return {
+        editingState: {
+          ...editingState,
+          audioState: {
+            ...editingState.audioState,
+            mixer: {
+              ...editingState.audioState.mixer,
+              ...patch,
+              volumeAutomation: clamp(patch.volumeAutomation ?? editingState.audioState.mixer.volumeAutomation, 0, 100),
+              pan: clamp(patch.pan ?? editingState.audioState.mixer.pan, -100, 100),
+              eqLow: clamp(patch.eqLow ?? editingState.audioState.mixer.eqLow, -12, 12),
+              eqMid: clamp(patch.eqMid ?? editingState.audioState.mixer.eqMid, -12, 12),
+              eqHigh: clamp(patch.eqHigh ?? editingState.audioState.mixer.eqHigh, -12, 12),
+              reverb: clamp(patch.reverb ?? editingState.audioState.mixer.reverb, 0, 100),
+              compression: clamp(patch.compression ?? editingState.audioState.mixer.compression, 0, 100),
+              ducking: clamp(patch.ducking ?? editingState.audioState.mixer.ducking, 0, 100)
+            }
+          }
+        }
+      }
+    }),
+  updateTextOverlay: (clipId, patch) =>
+    set((state) => {
+      const editingState = ensureEditingStateDefaults(state.editingState)
+      const existing = editingState.textOverlays.clips.find((item) => item.clipId === clipId)
+      const overlay = {
+        ...(existing ?? createDefaultTextOverlayClip(clipId)),
+        ...patch,
+        size: clamp(patch.size ?? existing?.size ?? 56, 8, 240),
+        opacity: clamp(patch.opacity ?? existing?.opacity ?? 100, 0, 100),
+        animationDuration: clamp(patch.animationDuration ?? existing?.animationDuration ?? 0.6, 0, 10)
+      }
+      return {
+        editingState: {
+          ...editingState,
+          textOverlays: {
+            clips: [overlay, ...editingState.textOverlays.clips.filter((item) => item.clipId !== clipId)]
+          }
+        }
+      }
+    })
+}), {
+  name: "cine-studio-project",
+  merge: (persisted, current) => {
+    const saved = (persisted ?? {}) as Partial<ProjectStore>
+    const next = { ...current, ...saved }
+    return {
+      ...next,
+      editingState: ensureEditingStateDefaults(next.editingState)
+    } as ProjectStore
+  },
+  partialize: (state) => ({
+    projectId: state.projectId,
+    projectName: state.projectName,
+    activeTab: state.activeTab,
+    credits: state.credits,
+    plan: state.plan,
+    creditEvents: state.creditEvents,
+    styleCards: state.styleCards,
+    characters: state.characters,
+    storyboardFrames: state.storyboardFrames,
+    workspaceNodes: state.workspaceNodes,
+    workspaceEdges: state.workspaceEdges,
+    assets: state.assets,
+    generatedMedia: state.generatedMedia,
+    cameraConfig: state.cameraConfig,
+    editingState: state.editingState
+  })
 }))

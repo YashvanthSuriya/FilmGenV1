@@ -1,3 +1,5 @@
+@import "@xyflow/react/dist/style.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -129,4 +131,63 @@ button {
 
 .text-balance {
   text-wrap: balance;
+}
+
+.workspace-flow {
+  --xy-background-color: var(--bg);
+  --xy-node-background-color: var(--node-bg);
+  --xy-node-border-default: 1px solid var(--node-border);
+  --xy-edge-stroke-default: rgba(0, 229, 255, 0.35);
+  --xy-edge-stroke-width-default: 2;
+  --xy-controls-button-background-color-default: var(--bg-surface);
+  --xy-controls-button-background-color-hover-default: var(--bg-elevated);
+  --xy-controls-button-color-default: var(--text-secondary);
+  --xy-controls-button-color-hover-default: var(--accent-cyan);
+  --xy-controls-button-border-color-default: var(--border-subtle);
+}
+
+.workspace-flow .react-flow__pane {
+  cursor: crosshair;
+}
+
+.workspace-flow .react-flow__node {
+  font-family: var(--font-dm-sans), sans-serif;
+  transition: filter var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+
+.workspace-flow .react-flow__node:hover {
+  filter: brightness(1.08);
+}
+
+.workspace-flow .react-flow__edge.selected path,
+.workspace-flow .react-flow__edge:hover path {
+  stroke: var(--accent-cyan);
+  stroke-width: 3;
+}
+
+.workspace-flow .react-flow__attribution {
+  display: none;
+}
+
+.camera-option-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.camera-option-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.camera-option-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+
+@keyframes workspace-edge-pulse {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }

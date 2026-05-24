@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { useProjectStore } from "@/lib/stores/project"
+import type { StoryboardFrame } from "@/lib/types"
 
 export function StoryboardWorkspace() {
   const styleCards = useProjectStore((state) => state.styleCards)
@@ -19,7 +20,7 @@ export function StoryboardWorkspace() {
   const [styleOpen, setStyleOpen] = useState(false)
   const [characterOpen, setCharacterOpen] = useState(false)
   const [generatorOpen, setGeneratorOpen] = useState(false)
-  const [view, setView] = useState<"grid" | "list">("grid")
+  const [view, setView] = useState<"grid" | "list" | "storyboard">("grid")
 
   function addShot() {
     addStoryboardFrames([
@@ -91,7 +92,7 @@ export function StoryboardWorkspace() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                {(["grid", "list"] as const).map((item) => (
+                {(["grid", "list", "storyboard"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
@@ -124,6 +125,8 @@ export function StoryboardWorkspace() {
                 </Button>
               </div>
             </Card>
+          ) : view === "storyboard" ? (
+            <StitchedStoryboard frames={frames} onAddShot={addShot} />
           ) : (
             <div className={view === "grid" ? "grid gap-4 md:grid-cols-2 xl:grid-cols-3" : "grid gap-4"}>
               {frames.map((frame, index) => (
@@ -148,6 +151,44 @@ export function StoryboardWorkspace() {
       <CharacterCreator open={characterOpen} onClose={() => setCharacterOpen(false)} />
       <AIStoryboardGenerator open={generatorOpen} onClose={() => setGeneratorOpen(false)} />
     </div>
+  )
+}
+
+function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; onAddShot: () => void }) {
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Stitched Storyboard Placeholder</h2>
+          <p className="mt-1 text-sm text-text-muted">A single board view for scanning the whole sequence.</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={onAddShot}>
+          <Plus className="h-4 w-4" />
+          Add Shot
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border-subtle bg-background p-3">
+        <div className="flex min-w-max gap-3">
+          {frames.map((frame, index) => (
+            <article key={frame.id} className="w-72 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-elevated">
+              <div
+                className="aspect-video bg-cover bg-center"
+                style={{
+                  background:
+                    frame.imageUrl ??
+                    "linear-gradient(135deg, rgba(0,229,255,0.18), rgba(255,184,0,0.08), rgba(155,89,255,0.18))"
+                }}
+              />
+              <div className="p-3">
+                <p className="font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">SH-{String(index + 1).padStart(2, "0")}</p>
+                <h3 className="mt-1 truncate font-heading text-sm font-semibold text-text-primary">{frame.title}</h3>
+                <p className="mt-2 line-clamp-3 text-xs text-text-muted">{frame.prompt}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 

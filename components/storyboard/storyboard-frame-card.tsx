@@ -1,17 +1,35 @@
 "use client"
 
 import { Copy, GripVertical, Pencil, RefreshCw, Send, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
+import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { StoryboardFrame } from "@/lib/types"
 
 const shotTypes = ["Wide", "Medium", "Close-up", "Extreme Close-up", "POV"]
 const movements = ["Static", "Pan", "Tilt", "Zoom", "Dolly", "Handheld"]
 
 export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; index: number }) {
+  const router = useRouter()
   const updateStoryboardFrame = useProjectStore((state) => state.updateStoryboardFrame)
   const duplicateStoryboardFrame = useProjectStore((state) => state.duplicateStoryboardFrame)
   const deleteStoryboardFrame = useProjectStore((state) => state.deleteStoryboardFrame)
+  const sendStoryboardFrameToWorkspace = useProjectStore((state) => state.sendStoryboardFrameToWorkspace)
+  const workspaceNodes = useWorkspaceStore((state) => state.nodes)
+  const workspaceEdges = useWorkspaceStore((state) => state.edges)
+  const setWorkspaceNodes = useWorkspaceStore((state) => state.setNodes)
+  const setWorkspaceEdges = useWorkspaceStore((state) => state.setEdges)
+  const selectWorkspaceNode = useWorkspaceStore((state) => state.selectNode)
+
+  function sendToWorkspace() {
+    const result = sendStoryboardFrameToWorkspace(frame.id)
+    if (!result) return
+    setWorkspaceNodes([...workspaceNodes, ...result.nodes])
+    setWorkspaceEdges([...workspaceEdges, ...result.edges])
+    selectWorkspaceNode(result.selectedNodeId)
+    router.push("/studio?tab=workspace")
+  }
 
   return (
     <article className="overflow-hidden rounded-[var(--radius-lg)] border border-border-subtle bg-surface shadow-sm transition hover:border-border-strong hover:shadow-md">
@@ -89,7 +107,7 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
-        <Button size="sm" variant="ghost" className="text-accent-amber hover:text-accent-amber">
+        <Button size="sm" variant="ghost" className="text-accent-amber hover:text-accent-amber" onClick={sendToWorkspace}>
           <Send className="mr-2 h-4 w-4" />
           Send to Workspace
         </Button>

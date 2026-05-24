@@ -4,9 +4,12 @@ import { useEffect } from "react"
 import { Camera, Clapperboard, Film, Grid3X3, Wand2 } from "lucide-react"
 import { StudioTopNav } from "@/components/studio/studio-top-nav"
 import { StoryboardWorkspace } from "@/components/storyboard/storyboard-workspace"
+import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas"
+import { EditingLayout } from "@/components/editing/EditingLayout"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { PlanLockOverlay } from "@/components/ui/plan-lock-overlay"
+import { StudioErrorBoundary } from "@/components/ui/studio-error-boundary"
 import { studioTabs, type StudioTab } from "@/lib/types"
 import { useProjectStore } from "@/lib/stores/project"
 
@@ -64,7 +67,31 @@ export function StudioShell({ initialTab }: { initialTab: StudioTab }) {
     return (
       <div className="min-h-screen bg-background">
         <StudioTopNav activeTab={activeTab} />
-        <StoryboardWorkspace />
+        <StudioErrorBoundary>
+          <StoryboardWorkspace />
+        </StudioErrorBoundary>
+      </div>
+    )
+  }
+
+  if (activeTab === "workspace") {
+    return (
+      <div className="min-h-screen bg-background">
+        <StudioTopNav activeTab={activeTab} />
+        <StudioErrorBoundary>
+          <WorkspaceCanvas />
+        </StudioErrorBoundary>
+      </div>
+    )
+  }
+
+  if (activeTab === "editing") {
+    return (
+      <div className="min-h-screen bg-background">
+        <StudioTopNav activeTab={activeTab} />
+        <StudioErrorBoundary>
+          <EditingLayout />
+        </StudioErrorBoundary>
       </div>
     )
   }
