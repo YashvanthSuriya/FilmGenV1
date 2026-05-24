@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
 import { formatTimecode } from "@/lib/editing/playback"
 import { createObjectUrlForBlobKey } from "@/lib/media/indexedDb"
+import { computeGradeOverlay, computePreviewFilter } from "@/lib/editing/colorGrade"
 
 export function PreviewPlayer({ duration }: { duration: number }) {
   const previewRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const playheadPosition = useProjectStore((state) => state.editingState.playheadPosition)
   const clips = useProjectStore((state) => state.editingState.clips)
@@ -23,14 +25,28 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | undefined>()
 
   const activeClip = useMemo(() => {
-    const selected = clips.find((clip) => clip.id === selectedClipId && (clip.type === "video" || clip.type === "image"))
-    if (selected) return selected
-    return clips
+    const atPlayhead = clips
       .filter((clip) => (clip.type === "video" || clip.type === "image") && playheadPosition >= clip.start && playheadPosition <= clip.start + clip.duration)
       .sort((a, b) => b.start - a.start)[0]
+    if (atPlayhead) return atPlayhead
+    return clips.find((clip) => clip.id === selectedClipId && (clip.type === "video" || clip.type === "image"))
   }, [clips, playheadPosition, selectedClipId])
 
-  const mediaFilter = `contrast(${100 + colorGrading.manual.contrast + colorGrading.lut.intensity * 0.1}%) saturate(${100 + colorGrading.manual.saturation}%) brightness(${100 + colorGrading.manual.exposure * 12}%) hue-rotate(${colorGrading.manual.tint}deg)`
+  const mediaFilter = colorGrading.previewMode === "before" ? "none" : computePreviewFilter(colorGrading)
+  const gradeOverlay = computeGradeOverlay(colorGrading)
+  const localTime = activeClip ? Math.min(activeClip.outPoint, Math.max(activeClip.inPoint, (playheadPosition - activeClip.start) * activeClip.speed + activeClip.inPoint)) : 0
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !activeClip || activeClip.type !== "video") return
+    if (Math.abs(video.currentTime - localTime) > 0.2) video.currentTime = localTime
+    video.playbackRate = activeClip.speed
+    if (playing) {
+      void video.play().catch(() => undefined)
+    } else {
+      video.pause()
+    }
+  }, [activeClip, localTime, playing])
 
   useEffect(() => {
     let cancelled = false
@@ -79,7 +95,7 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   const previewSurface = (
     <div
       ref={previewRef}
-      className="relative aspect-video max-h-full w-full max-w-full overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-black shadow-lg lg:max-w-7xl"
+      className="relative aspect-video max-h-full w-full max-w-full overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-black shadow-lg"
       onPointerDown={seek}
       onPointerMove={(event) => {
         if (event.buttons === 1) seek(event)
@@ -87,10 +103,12 @@ export function PreviewPlayer({ duration }: { duration: number }) {
     >
       <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_center,rgba(0,229,255,0.1),transparent_34%),#020202]">
         {resolvedUrl && activeClip?.type === "video" ? (
-          <video key={resolvedUrl} className="h-full w-full object-contain" src={resolvedUrl} muted playsInline controls style={{ filter: mediaFilter }} onPointerDown={(event) => event.stopPropagation()} />
+          <video ref={videoRef} key={resolvedUrl} className="h-full w-full object-contain" src={resolvedUrl} muted playsInline style={{ filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} onPointerDown={(event) => event.stopPropagation()} />
+        ) : resolvedUrl && activeClip?.type === "image" && resolvedUrl.startsWith("linear-gradient") ? (
+          <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: resolvedUrl, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : resolvedUrl && activeClip?.type === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="h-full w-full object-contain" src={resolvedUrl} alt={activeClip.name} style={{ filter: mediaFilter }} />
+          <img className="h-full w-full object-contain" src={resolvedUrl} alt={activeClip.name} style={{ filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : (
           <div className="flex flex-col items-center gap-3 text-text-muted">
             <MonitorPlay className="h-12 w-12 text-border-strong" />
@@ -103,6 +121,10 @@ export function PreviewPlayer({ duration }: { duration: number }) {
           </div>
         ) : null}
       </div>
+      <div
+        className="pointer-events-none absolute inset-0 mix-blend-soft-light"
+        style={gradeOverlay}
+      />
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -123,11 +145,14 @@ export function PreviewPlayer({ duration }: { duration: number }) {
           {textOverlay.text}
         </div>
       ) : null}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-3 opacity-100 transition">
+      <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-3 opacity-100 transition">
         <span className="rounded bg-accent-cyan-dim px-2 py-1 font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">1920 x 1080</span>
-        <span className="rounded bg-black/70 px-2 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          {colorGrading.lut.name} {colorGrading.lut.intensity}%
-        </span>
+        <div className="text-right">
+          <span className="rounded bg-black/70 px-2 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-secondary">
+            {colorGrading.previewMode === "before" ? "Before" : `${colorGrading.lut.name} ${colorGrading.lut.intensity}%`}
+          </span>
+          <p className="mt-2 font-body text-xs text-text-secondary">{formatTimecode(localTime)}</p>
+        </div>
         <Button size="icon" variant="ghost" aria-label={fullscreen ? "Exit fullscreen preview" : "Fullscreen preview"} onClick={fullscreen ? () => void closeFullscreen() : () => void openFullscreen()}>
           {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
@@ -148,7 +173,7 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   )
 
   return (
-    <div className="group grid min-h-0 min-w-0 place-items-center overflow-hidden bg-black p-3">
+    <div className="group grid min-h-0 min-w-0 place-items-center overflow-hidden bg-black p-4">
       {previewSurface}
       {fullscreen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/95 p-4">

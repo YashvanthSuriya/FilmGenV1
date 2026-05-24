@@ -55,8 +55,8 @@ export function CurvesEditor() {
   function pointFromEvent(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
     return {
-      x: (event.clientX - rect.left) / rect.width,
-      y: (event.clientY - rect.top) / rect.height
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
     }
   }
 
@@ -85,10 +85,11 @@ export function CurvesEditor() {
           const point = pointFromEvent(event)
           const hit = hitPoint(point)
           if (event.detail > 1 && hit) {
-            removePoint(channel, hit.id)
+            if (hit.id !== "point-0" && hit.id !== "point-1") removePoint(channel, hit.id)
             return
           }
           if (hit) {
+            event.currentTarget.setPointerCapture(event.pointerId)
             setDraggingId(hit.id)
           } else {
             addPoint(channel, point)
@@ -96,7 +97,11 @@ export function CurvesEditor() {
         }}
         onPointerMove={(event) => {
           if (!draggingId || event.buttons !== 1) return
-          updatePoint(channel, draggingId, pointFromEvent(event))
+          const point = pointFromEvent(event)
+          updatePoint(channel, draggingId, {
+            ...point,
+            x: draggingId === "point-0" ? 0 : draggingId === "point-1" ? 1 : point.x
+          })
         }}
         onPointerUp={() => setDraggingId(null)}
         onPointerLeave={() => setDraggingId(null)}

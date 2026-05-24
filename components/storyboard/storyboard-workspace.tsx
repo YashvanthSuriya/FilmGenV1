@@ -27,7 +27,7 @@ export function StoryboardWorkspace() {
       {
         id: `shot-manual-${Date.now()}`,
         title: `Shot ${frames.length + 1}`,
-        prompt: "Describe the shot, subject, mood, and camera intent.",
+        prompt: "Beat: describe the story moment. Prompt: subject, action, mood, lighting, and camera intent.",
         shotType: "Wide",
         cameraMovement: "Static",
         aspectRatio: "16:9",
@@ -88,7 +88,8 @@ export function StoryboardWorkspace() {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge>Storyboard</Badge>
-              <h1 className="mt-2 font-heading text-3xl font-bold text-text-primary">Shot planning board</h1>
+              <h1 className="mt-2 font-heading text-3xl font-bold text-text-primary">Shot pipeline</h1>
+              <p className="mt-1 text-sm text-text-muted">Plan each shot as a beat, camera setup, generated frame, then send it to workspace or editing.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-[var(--radius-md)] border border-border bg-surface p-1">
@@ -159,8 +160,8 @@ function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; 
     <section className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Stitched Storyboard Placeholder</h2>
-          <p className="mt-1 text-sm text-text-muted">A single board view for scanning the whole sequence.</p>
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Sequence Strip</h2>
+          <p className="mt-1 text-sm text-text-muted">Scan shot order from beat to frame before sending shots into production.</p>
         </div>
         <Button size="sm" variant="secondary" onClick={onAddShot}>
           <Plus className="h-4 w-4" />
@@ -171,6 +172,10 @@ function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; 
         <div className="flex min-w-max gap-3">
           {frames.map((frame, index) => (
             <article key={frame.id} className="w-72 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-elevated">
+              <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
+                <p className="font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">SH-{String(index + 1).padStart(2, "0")}</p>
+                <p className="font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">{frame.shotType} / {frame.cameraMovement}</p>
+              </div>
               <div
                 className="aspect-video bg-cover bg-center"
                 style={{
@@ -180,7 +185,6 @@ function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; 
                 }}
               />
               <div className="p-3">
-                <p className="font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">SH-{String(index + 1).padStart(2, "0")}</p>
                 <h3 className="mt-1 truncate font-heading text-sm font-semibold text-text-primary">{frame.title}</h3>
                 <p className="mt-2 line-clamp-3 text-xs text-text-muted">{frame.prompt}</p>
               </div>

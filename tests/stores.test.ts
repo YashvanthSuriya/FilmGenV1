@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { useProjectStore } from "@/lib/stores/project"
 import { useUserStore } from "@/lib/stores/user"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
+import { createInitialEditingState } from "@/lib/editing/timeline"
 import { studioTabs } from "@/lib/types"
 
 describe("Cine Studio Phase 1 stores", () => {
@@ -48,5 +49,37 @@ describe("Cine Studio Phase 1 stores", () => {
       amount: -2,
       description: "Unit test generation"
     })
+  })
+
+  it("sends storyboard shots to workspace and editing assets", () => {
+    useProjectStore.setState({
+      storyboardFrames: [
+        {
+          id: "shot-1",
+          title: "Market Reveal",
+          prompt: "A wide neon market reveal with rain and drones.",
+          shotType: "Wide",
+          cameraMovement: "Dolly",
+          aspectRatio: "16:9",
+          referenceImages: [],
+          imageUrl: "linear-gradient(135deg, #00E5FF, #111018)"
+        }
+      ],
+      workspaceNodes: [],
+      workspaceEdges: [],
+      assets: [],
+      generatedMedia: [],
+      editingState: createInitialEditingState()
+    })
+
+    const store = useProjectStore.getState()
+    const workspace = store.sendStoryboardFrameToWorkspace("shot-1")
+    expect(workspace?.nodes.map((node) => node.type)).toEqual(["prompt", "cameraConfig", "imageOutput"])
+    expect(useProjectStore.getState().assets.some((asset) => asset.source === "storyboard")).toBe(true)
+
+    const asset = useProjectStore.getState().addStoryboardAsset("shot-1")
+    expect(asset?.type).toBe("image")
+    useProjectStore.getState().addAssetToTimeline(asset!.id)
+    expect(useProjectStore.getState().editingState.clips[0]).toMatchObject({ type: "image", source: "storyboard" })
   })
 })

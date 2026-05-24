@@ -1,6 +1,6 @@
 "use client"
 
-import { Copy, GripVertical, Pencil, RefreshCw, Send, Trash2 } from "lucide-react"
+import { Copy, GripVertical, Pencil, Plus, RefreshCw, Send, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
@@ -15,6 +15,8 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
   const updateStoryboardFrame = useProjectStore((state) => state.updateStoryboardFrame)
   const duplicateStoryboardFrame = useProjectStore((state) => state.duplicateStoryboardFrame)
   const deleteStoryboardFrame = useProjectStore((state) => state.deleteStoryboardFrame)
+  const addStoryboardAsset = useProjectStore((state) => state.addStoryboardAsset)
+  const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
   const sendStoryboardFrameToWorkspace = useProjectStore((state) => state.sendStoryboardFrameToWorkspace)
   const workspaceNodes = useWorkspaceStore((state) => state.nodes)
   const workspaceEdges = useWorkspaceStore((state) => state.edges)
@@ -31,8 +33,27 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
     router.push("/studio?tab=workspace")
   }
 
+  function addToEditing() {
+    const asset = addStoryboardAsset(frame.id)
+    if (!asset) return
+    addAssetToTimeline(asset.id)
+    router.push("/studio?tab=editing")
+  }
+
   return (
     <article className="overflow-hidden rounded-[var(--radius-lg)] border border-border-subtle bg-surface shadow-sm transition hover:border-border-strong hover:shadow-md">
+      <div className="flex items-center justify-between border-b border-border-subtle bg-elevated px-3 py-2">
+        <div className="min-w-0">
+          <p className="font-heading text-[10px] uppercase tracking-[0.08em] text-accent-cyan">SH-{String(index + 1).padStart(2, "0")}</p>
+          <input
+            value={frame.title}
+            onChange={(event) => updateStoryboardFrame(frame.id, { title: event.target.value })}
+            className="mt-1 w-full bg-transparent font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary outline-none focus:text-accent-cyan"
+            aria-label={`Shot ${index + 1} title`}
+          />
+        </div>
+        <GripVertical className="h-4 w-4 shrink-0 text-text-muted" />
+      </div>
       <div className={`group relative ${frame.aspectRatio === "9:16" ? "aspect-[9/16]" : "aspect-video"}`}>
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -53,10 +74,7 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
       </div>
 
       <div className="border-t border-border-subtle bg-elevated p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-heading text-xs uppercase tracking-[0.08em] text-text-muted">
-            SH-{String(index + 1).padStart(2, "0")}
-          </span>
+        <div className="grid grid-cols-2 gap-2">
           <select
             value={frame.shotType}
             onChange={(event) => updateStoryboardFrame(frame.id, { shotType: event.target.value })}
@@ -75,6 +93,15 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
               <option key={movement}>{movement}</option>
             ))}
           </select>
+          <select
+            value={frame.aspectRatio}
+            onChange={(event) => updateStoryboardFrame(frame.id, { aspectRatio: event.target.value as StoryboardFrame["aspectRatio"] })}
+            className="h-7 rounded border border-border bg-surface px-2 text-xs text-text-primary outline-none focus:border-accent-cyan"
+          >
+            <option>16:9</option>
+            <option>9:16</option>
+          </select>
+          <span className="grid h-7 place-items-center rounded border border-border bg-background px-2 font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">Frame ready</span>
         </div>
       </div>
 
@@ -99,7 +126,6 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
 
       <div className="flex items-center justify-between border-t border-border-subtle px-3 py-2">
         <div className="flex items-center gap-1 text-text-muted">
-          <GripVertical className="h-4 w-4" />
           <button type="button" aria-label="Duplicate frame" onClick={() => duplicateStoryboardFrame(frame.id)} className="rounded p-1 hover:bg-elevated hover:text-text-primary">
             <Copy className="h-4 w-4" />
           </button>
@@ -107,10 +133,16 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
-        <Button size="sm" variant="ghost" className="text-accent-amber hover:text-accent-amber" onClick={sendToWorkspace}>
-          <Send className="mr-2 h-4 w-4" />
-          Send to Workspace
-        </Button>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="text-accent-cyan hover:text-accent-cyan" onClick={addToEditing}>
+            <Plus className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+          <Button size="sm" variant="ghost" className="text-accent-amber hover:text-accent-amber" onClick={sendToWorkspace}>
+            <Send className="mr-2 h-4 w-4" />
+            Workspace
+          </Button>
+        </div>
       </div>
     </article>
   )

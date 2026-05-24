@@ -12,6 +12,10 @@ import type {
 } from "@/lib/types"
 
 const DEFAULT_CLIP_DURATION = 5
+const MIN_CLIP_DURATION = 0.25
+const CLIP_GAP = 0.25
+const SNAP_INTERVAL = 0.25
+const SNAP_THRESHOLD = 0.12
 
 export function createDefaultTracks(): TimelineTrack[] {
   return [
@@ -56,7 +60,7 @@ export function ensureEditingStateDefaults(state?: Partial<EditingState> | null)
 
 export function createDefaultColorGradingState(): ColorGradingState {
   const neutralWheel = { hue: 0, saturation: 0, luminance: 0 }
-  const neutralCurve = [
+  const createNeutralCurve = () => [
     { id: "point-0", x: 0, y: 1 },
     { id: "point-1", x: 1, y: 0 }
   ]
@@ -65,10 +69,10 @@ export function createDefaultColorGradingState(): ColorGradingState {
     gamma: { ...neutralWheel },
     gain: { ...neutralWheel },
     curves: {
-      master: neutralCurve,
-      red: neutralCurve,
-      green: neutralCurve,
-      blue: neutralCurve
+      master: createNeutralCurve(),
+      red: createNeutralCurve(),
+      green: createNeutralCurve(),
+      blue: createNeutralCurve()
     },
     lut: {
       name: "Natural",
@@ -165,7 +169,7 @@ export function createClipFromMedia(media: GeneratedMedia, trackId: string, star
 }
 
 export function createTimelineClip(input: Partial<TimelineClip> & Pick<TimelineClip, "id" | "trackId" | "type" | "name">): TimelineClip {
-  const duration = Math.max(0.25, input.duration ?? DEFAULT_CLIP_DURATION)
+  const duration = Math.max(MIN_CLIP_DURATION, input.duration ?? DEFAULT_CLIP_DURATION)
   return {
     ...input,
     start: Math.max(0, input.start ?? 0),
@@ -245,10 +249,22 @@ export function moveClip(clips: TimelineClip[], tracks: TimelineTrack[], clipId:
 }
 
 export function trimClip(clips: TimelineClip[], clipId: string, edge: "start" | "end", position: number) {
+  const source = clips.find((clip) => clip.id === clipId)
+  if (!source) return clips
+  const siblings = clips.filter((clip) => clip.id !== clipId && clip.trackId === source.trackId)
+  const previousEnd = siblings
+    .filter((clip) => clip.start + clip.duration <= source.start)
+    .reduce((end, clip) => Math.max(end, clip.start + clip.duration), 0)
+  const nextStart = siblings
+    .filter((clip) => clip.start >= source.start + source.duration)
+    .reduce((start, clip) => Math.min(start, clip.start), Number.POSITIVE_INFINITY)
+
   return clips.map((clip) => {
     if (clip.id !== clipId) return clip
     if (edge === "start") {
-      const nextStart = Math.max(0, Math.min(position, clip.start + clip.duration - 0.25))
+      const snapped = snapTime(position, siblingSnapCandidates(siblings))
+      const minimumStart = previousEnd > 0 ? previousEnd + CLIP_GAP : 0
+      const nextStart = Math.max(minimumStart, Math.min(snapped, clip.start + clip.duration - MIN_CLIP_DURATION))
       const delta = nextStart - clip.start
       return {
         ...clip,
@@ -258,7 +274,9 @@ export function trimClip(clips: TimelineClip[], clipId: string, edge: "start" | 
       }
     }
 
-    const nextEnd = Math.max(clip.start + 0.25, position)
+    const snapped = snapTime(position, siblingSnapCandidates(siblings))
+    const maxEnd = Number.isFinite(nextStart) ? nextStart - CLIP_GAP : Number.POSITIVE_INFINITY
+    const nextEnd = Math.min(maxEnd, Math.max(clip.start + MIN_CLIP_DURATION, snapped))
     return {
       ...clip,
       duration: nextEnd - clip.start,
@@ -282,11 +300,27 @@ function sortClips(a: TimelineClip, b: TimelineClip) {
 }
 
 export function resolveClipStart(clips: TimelineClip[], clipId: string, trackId: string, requestedStart: number, duration: number) {
-  let start = Math.max(0, requestedStart)
   const siblings = clips.filter((clip) => clip.id !== clipId && clip.trackId === trackId).sort((a, b) => a.start - b.start)
+  let start = snapTime(Math.max(0, requestedStart), siblingSnapCandidates(siblings))
   for (const sibling of siblings) {
     const overlaps = start < sibling.start + sibling.duration && start + duration > sibling.start
-    if (overlaps) start = sibling.start + sibling.duration + 0.25
+    if (overlaps) start = sibling.start + sibling.duration + CLIP_GAP
   }
   return start
+}
+
+export function snapTime(time: number, candidates: number[] = []) {
+  const grid = Math.round(time / SNAP_INTERVAL) * SNAP_INTERVAL
+  let snapped = Math.abs(grid - time) <= SNAP_THRESHOLD ? grid : time
+  for (const candidate of candidates) {
+    if (Math.abs(candidate - snapped) <= SNAP_THRESHOLD) {
+      snapped = candidate
+      break
+    }
+  }
+  return Math.max(0, Number(snapped.toFixed(3)))
+}
+
+function siblingSnapCandidates(clips: TimelineClip[]) {
+  return clips.flatMap((clip) => [clip.start, clip.start + clip.duration])
 }

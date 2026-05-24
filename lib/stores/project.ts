@@ -615,6 +615,7 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
     set((state) => {
       const editingState = ensureEditingStateDefaults(state.editingState)
       const curve = editingState.colorGrading.curves[channel]
+      if (pointId === "point-0" || pointId === "point-1") return { editingState }
       if (curve.length <= 2) return { editingState }
       return {
         editingState: {

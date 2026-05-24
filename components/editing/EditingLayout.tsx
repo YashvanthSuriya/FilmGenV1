@@ -15,17 +15,29 @@ export function EditingLayout() {
   const playheadPosition = useProjectStore((state) => state.editingState.playheadPosition)
   const playbackSpeed = useProjectStore((state) => state.editingState.playbackSpeed)
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
+  const setPlaybackState = useProjectStore((state) => state.setPlaybackState)
   const selectedClipId = useProjectStore((state) => state.editingState.selectedClipId)
   const deleteClip = useProjectStore((state) => state.deleteTimelineClip)
-  const duration = Math.max(30, getTimelineDuration(clips))
+  const duration = getTimelineDuration(clips)
 
   useEffect(() => {
     if (playbackState !== "playing") return undefined
+    if (duration <= 0) {
+      setPlaybackState("paused")
+      setPlayheadPosition(0)
+      return undefined
+    }
     const interval = window.setInterval(() => {
-      setPlayheadPosition(Math.min(duration, playheadPosition + 0.1 * playbackSpeed))
+      const nextPosition = playheadPosition + 0.1 * playbackSpeed
+      if (nextPosition >= duration) {
+        setPlayheadPosition(duration)
+        setPlaybackState("paused")
+        return
+      }
+      setPlayheadPosition(nextPosition)
     }, 100)
     return () => window.clearInterval(interval)
-  }, [duration, playbackSpeed, playbackState, playheadPosition, setPlayheadPosition])
+  }, [duration, playbackSpeed, playbackState, playheadPosition, setPlaybackState, setPlayheadPosition])
 
   useEffect(() => {
     function handleDelete(event: KeyboardEvent) {
@@ -41,9 +53,9 @@ export function EditingLayout() {
   }, [deleteClip, selectedClipId])
 
   return (
-    <main className="grid h-[calc(100vh-var(--nav-height))] grid-rows-[minmax(0,1fr)_auto_minmax(220px,28vh)] overflow-hidden bg-background">
-      <section className="grid min-h-0 min-w-0 grid-cols-1 border-b border-border-subtle lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] bg-background">
+    <main className="grid h-[calc(100vh-var(--nav-height))] grid-rows-[minmax(0,1fr)_auto_minmax(240px,30vh)] overflow-hidden bg-background">
+      <section className="grid min-h-0 min-w-0 grid-cols-1 border-b border-border-subtle lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(420px,1fr)_auto] bg-background">
           <PreviewPlayer duration={duration} />
           <MediaPanel />
         </div>

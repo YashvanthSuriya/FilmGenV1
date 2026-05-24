@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { formatTimecode, parseTimecode } from "@/lib/editing/playback"
+import { applyCurve, colorWheelToAdjustments, computePreviewFilter } from "@/lib/editing/colorGrade"
 import { applyTransition, removeTransition } from "@/lib/editing/transitions"
 import { createClipFromAsset, defaultTrackForAsset } from "@/lib/media/assets"
 import { useProjectStore } from "@/lib/stores/project"
@@ -90,6 +91,17 @@ describe("Phase 4 editing timeline", () => {
     expect(moveClip([first, second], createDefaultTracks(), second.id, "track-video-v1", 1)[1].start).toBe(4.25)
   })
 
+  it("extends image clips by trimming the end while preventing same-track overlap", () => {
+    const image = createTimelineClip({ id: "image", trackId: "track-video-v1", type: "image", name: "Still", start: 0, duration: 3 })
+    const next = createTimelineClip({ id: "next", trackId: "track-video-v1", type: "image", name: "Next", start: 8, duration: 2 })
+
+    const extended = trimClip([image], image.id, "end", 7)[0]
+    expect(extended).toMatchObject({ duration: 7, outPoint: 7 })
+
+    const clamped = trimClip([image, next], image.id, "end", 10).find((clip) => clip.id === image.id)
+    expect(clamped?.duration).toBe(7.75)
+  })
+
   it("formats and parses 24fps timecode", () => {
     expect(formatTimecode(65.5)).toBe("00:01:05:12")
     expect(parseTimecode("00:01:05:12")).toBe(65.5)
@@ -177,6 +189,20 @@ describe("Phase 5 editing suite state", () => {
     expect(color.lut).toEqual({ name: "Noir", intensity: 100 })
   })
 
+  it("computes visible color grade output from manual controls, wheels, curves, and LUTs", () => {
+    const state = createInitialEditingState().colorGrading
+    const neutral = computePreviewFilter(state)
+    state.manual.exposure = 1
+    state.manual.saturation = 35
+    state.lut = { name: "Noir", intensity: 75 }
+    state.gain = { hue: 180, saturation: 50, luminance: 20 }
+    state.curves.master = [{ id: "point-0", x: 0, y: 1 }, { id: "mid", x: 0.5, y: 0.25 }, { id: "point-1", x: 1, y: 0 }]
+
+    expect(computePreviewFilter(state)).not.toBe(neutral)
+    expect(colorWheelToAdjustments(state.gain).saturation).toBeGreaterThan(0)
+    expect(applyCurve(state.curves.master, 0.5)).toBeGreaterThan(0.7)
+  })
+
   it("adds, updates, and removes curve points", () => {
     const store = useProjectStore.getState()
 
@@ -190,6 +216,10 @@ describe("Phase 5 editing suite state", () => {
 
     store.removeCurvePoint("master", added!.id)
     expect(useProjectStore.getState().editingState.colorGrading.curves.master).toHaveLength(2)
+
+    store.addCurvePoint("master", { x: 0.5, y: 0.5 })
+    store.removeCurvePoint("master", "point-0")
+    expect(useProjectStore.getState().editingState.colorGrading.curves.master.some((point) => point.id === "point-0")).toBe(true)
   })
 
   it("updates color preview mode and audio mock state", () => {

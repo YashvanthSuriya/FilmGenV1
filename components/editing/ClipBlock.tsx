@@ -67,15 +67,25 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
 
   function beginMove(event: React.PointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).dataset.trim) return
+    event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
-    selectClip(clip.id)
     const startX = event.clientX
+    const startY = event.clientY
     const originalStart = clip.start
+    let didDrag = false
+    const previousUserSelect = document.body.style.userSelect
+    document.body.style.userSelect = "none"
     function move(pointerEvent: PointerEvent) {
+      pointerEvent.preventDefault()
+      const distance = Math.hypot(pointerEvent.clientX - startX, pointerEvent.clientY - startY)
+      if (!didDrag && distance < 4) return
+      didDrag = true
       const deltaSeconds = (pointerEvent.clientX - startX) / (SECOND_WIDTH * zoom)
       moveClip(clip.id, clip.trackId, originalStart + deltaSeconds)
     }
     function stop() {
+      document.body.style.userSelect = previousUserSelect
+      if (!didDrag) selectClip(clip.id)
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", stop)
     }
@@ -85,13 +95,18 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
 
   function beginTrim(edge: "start" | "end", event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation()
+    event.preventDefault()
     const startX = event.clientX
     const original = edge === "start" ? clip.start : clip.start + clip.duration
+    const previousUserSelect = document.body.style.userSelect
+    document.body.style.userSelect = "none"
     function move(pointerEvent: PointerEvent) {
+      pointerEvent.preventDefault()
       const deltaSeconds = (pointerEvent.clientX - startX) / (SECOND_WIDTH * zoom)
       trimClip(clip.id, edge, original + deltaSeconds)
     }
     function stop() {
+      document.body.style.userSelect = previousUserSelect
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", stop)
     }
@@ -110,7 +125,7 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
   return (
     <>
       <div
-        className={`absolute top-2 h-14 cursor-grab overflow-hidden rounded-[var(--radius-md)] border border-l-4 px-3 py-2 text-left shadow-sm transition active:cursor-grabbing ${clipClass} ${selected ? "ring-2 ring-accent-cyan" : ""}`}
+        className={`absolute top-2 h-14 cursor-grab select-none overflow-hidden rounded-[var(--radius-md)] border border-l-4 px-3 py-2 text-left shadow-sm transition active:cursor-grabbing ${clipClass} ${selected ? "ring-2 ring-accent-cyan" : ""}`}
         style={{ left, width: Math.max(44, width) }}
         onPointerDown={beginMove}
         onContextMenu={(event) => {
@@ -119,8 +134,8 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
           setMenu({ x: event.clientX, y: event.clientY })
         }}
       >
-        <button data-trim="start" type="button" aria-label="Trim clip start" onPointerDown={(event) => beginTrim("start", event)} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize" />
-        <button data-trim="end" type="button" aria-label="Trim clip end" onPointerDown={(event) => beginTrim("end", event)} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize" />
+        <button data-trim="start" type="button" aria-label="Trim clip start" onPointerDown={(event) => beginTrim("start", event)} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-transparent hover:bg-accent-cyan/20" />
+        <button data-trim="end" type="button" aria-label="Trim clip end" onPointerDown={(event) => beginTrim("end", event)} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-transparent hover:bg-accent-cyan/20" />
         <div className="flex items-center gap-2">
           <p className="truncate font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-primary">{clip.name}</p>
           {clip.source ? <span className="rounded-full bg-background px-1.5 py-0.5 text-[9px] uppercase text-text-muted">{clip.source}</span> : null}

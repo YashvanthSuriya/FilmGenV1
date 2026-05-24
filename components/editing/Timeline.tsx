@@ -22,12 +22,13 @@ export function Timeline({ duration }: { duration: number }) {
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
   const setTimelineZoom = useProjectStore((state) => state.setTimelineZoom)
   const orderedTracks = useMemo(() => [...editing.tracks].sort((a, b) => a.order - b.order), [editing.tracks])
-  const timelineWidth = Math.max(900, duration * SECOND_WIDTH * editing.timelineZoom)
+  const displayDuration = Math.max(10, duration)
+  const timelineWidth = Math.max(900, displayDuration * SECOND_WIDTH * editing.timelineZoom)
 
   function seekFromEvent(event: React.PointerEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - rect.left
-    setPlayheadPosition(Math.max(0, x / (SECOND_WIDTH * editing.timelineZoom)))
+    setPlayheadPosition(Math.min(duration, Math.max(0, x / (SECOND_WIDTH * editing.timelineZoom))))
   }
 
   return (
@@ -51,7 +52,7 @@ export function Timeline({ duration }: { duration: number }) {
 
         <div className="min-w-0 flex-1">
           <div className="relative h-10 border-b border-border-subtle bg-surface" style={{ width: timelineWidth }} onPointerDown={seekFromEvent}>
-            {Array.from({ length: Math.ceil(duration) + 1 }).map((_, second) => (
+            {Array.from({ length: Math.ceil(displayDuration) + 1 }).map((_, second) => (
               <div key={second} className="absolute top-0 h-full border-l border-border-subtle px-1 pt-1 font-body text-[10px] text-text-muted" style={{ left: second * SECOND_WIDTH * editing.timelineZoom }}>
                 {second % 5 === 0 ? formatTimecode(second).slice(3) : ""}
               </div>
