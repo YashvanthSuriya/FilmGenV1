@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { ChevronDown, ChevronUp, ImageIcon, Music, Plus, Upload, Video } from "lucide-react"
+import { useState } from "react"
+import { ChevronDown, ChevronUp, ImageIcon, Music, Plus, Video } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
-import { createObjectUrlForBlobKey, saveMediaBlob } from "@/lib/media/indexedDb"
 import type { ProjectAsset } from "@/lib/types"
+
+type MediaFilter = "all" | ProjectAsset["type"]
 
 function MediaIcon({ type }: { type: ProjectAsset["type"] }) {
   if (type === "audio") return <Music className="h-4 w-4 text-accent-amber" />
@@ -16,114 +17,88 @@ function MediaIcon({ type }: { type: ProjectAsset["type"] }) {
 
 export function MediaPanel() {
   const [open, setOpen] = useState(true)
-  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({})
-  const videoInputRef = useRef<HTMLInputElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
-  const audioInputRef = useRef<HTMLInputElement>(null)
+  const [filter, setFilter] = useState<MediaFilter>("all")
   const assets = useProjectStore((state) => state.assets)
-  const addImportedAsset = useProjectStore((state) => state.addImportedAsset)
   const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
-
-  useEffect(() => {
-    let cancelled = false
-    const createdUrls: string[] = []
-    async function loadUrls() {
-      const pairs = await Promise.all(
-        assets.map(async (asset) => {
-          if (asset.url) return [asset.id, asset.url] as const
-          const objectUrl = await createObjectUrlForBlobKey(asset.blobKey)
-          if (objectUrl) createdUrls.push(objectUrl)
-          return [asset.id, objectUrl] as const
-        })
-      )
-      if (!cancelled) {
-        const nextUrls: Record<string, string> = {}
-        pairs.forEach(([id, url]) => {
-          if (url) nextUrls[id] = url
-        })
-        setAssetUrls(nextUrls)
-      }
-    }
-    void loadUrls()
-    return () => {
-      cancelled = true
-      createdUrls.forEach((url) => URL.revokeObjectURL(url))
-    }
-  }, [assets])
-
-  async function importFiles(files: FileList | null) {
-    if (!files) return
-    for (const file of Array.from(files)) {
-      const asset = addImportedAsset(file)
-      await saveMediaBlob(asset.id, file)
-    }
+  const filteredAssets = assets.filter((asset) => filter === "all" || asset.type === filter)
+  const counts = {
+    all: assets.length,
+    image: assets.filter((asset) => asset.type === "image").length,
+    video: assets.filter((asset) => asset.type === "video").length,
+    audio: assets.filter((asset) => asset.type === "audio").length
   }
 
   return (
-    <aside className="min-w-0 border-t border-border-subtle bg-surface/95">
-      <div className="flex h-9 items-center justify-between px-4">
+    <aside className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-b border-border-subtle bg-surface/95 lg:border-b-0 lg:border-r">
+      <div className="flex min-h-11 items-center justify-between gap-2 border-b border-border-subtle px-3">
         <div className="flex items-center gap-2">
-          <h2 className="font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-primary">Media</h2>
-          <Badge>{assets.length}</Badge>
+          <h2 className="font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-primary">Demo Media</h2>
+          <Badge>{counts.all}</Badge>
         </div>
-        <div className="flex items-center gap-1">
-          <input ref={videoInputRef} hidden type="file" accept="video/*" multiple onChange={(event) => void importFiles(event.target.files)} />
-          <input ref={imageInputRef} hidden type="file" accept="image/*" multiple onChange={(event) => void importFiles(event.target.files)} />
-          <input ref={audioInputRef} hidden type="file" accept="audio/*" multiple onChange={(event) => void importFiles(event.target.files)} />
-          <Button size="sm" variant="ghost" onClick={() => videoInputRef.current?.click()}>
-            <Upload className="h-4 w-4" />
-            Video
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => imageInputRef.current?.click()}>
-            <ImageIcon className="h-4 w-4" />
-            Image
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => audioInputRef.current?.click()}>
-            <Music className="h-4 w-4" />
-            Audio
-          </Button>
-          <Button size="icon" variant="ghost" onClick={() => setOpen((value) => !value)} aria-label={open ? "Collapse media" : "Expand media"}>
-            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-          </Button>
-        </div>
+        <Button size="icon" variant="ghost" onClick={() => setOpen((value) => !value)} aria-label={open ? "Collapse media" : "Expand media"}>
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </Button>
       </div>
       {open ? (
-        <div className="flex max-h-32 max-w-full gap-3 overflow-x-auto px-4 pb-3">
-          {assets.length === 0 ? (
-            <div className="w-full rounded-[var(--radius-md)] border border-dashed border-border-subtle bg-background px-4 py-5 text-center text-sm text-text-muted">
-              Import media or publish outputs from Workspace. Everything you add here can go straight to the timeline.
-            </div>
-          ) : (
-            assets.map((item) => (
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 p-3">
+          <div className="grid grid-cols-4 gap-1 rounded-[var(--radius-md)] border border-border-subtle bg-background p-1">
+            <FilterButton label="All" count={counts.all} active={filter === "all"} onClick={() => setFilter("all")} />
+            <FilterButton label="Images" count={counts.image} active={filter === "image"} onClick={() => setFilter("image")} />
+            <FilterButton label="Videos" count={counts.video} active={filter === "video"} onClick={() => setFilter("video")} />
+            <FilterButton label="Audio" count={counts.audio} active={filter === "audio"} onClick={() => setFilter("audio")} />
+          </div>
+          <div data-testid="media-asset-scroll" className="flex min-h-0 max-h-44 max-w-full gap-3 overflow-x-auto overflow-y-hidden lg:max-h-none lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto">
+            {filteredAssets.map((item) => (
               <div
                 key={item.id}
                 draggable
-                onDragStart={(event) => event.dataTransfer.setData("application/x-cine-asset", item.id)}
-                className="flex h-28 min-w-72 items-start gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-elevated p-2 text-left transition hover:border-accent-cyan hover:bg-overlay"
+                data-asset-type={item.type}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "copy"
+                  event.dataTransfer.setData("application/x-cine-asset", item.id)
+                  event.dataTransfer.setData("text/plain", item.id)
+                }}
+                className="flex min-h-28 min-w-72 items-start gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-elevated p-2 text-left transition hover:border-accent-cyan hover:bg-overlay lg:min-w-0"
               >
                 <div className="grid h-20 w-28 shrink-0 place-items-center overflow-hidden rounded border border-border-subtle bg-background">
-                  {item.type !== "audio" && assetUrls[item.id] ? (
-                    <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${assetUrls[item.id]})` }} />
-                  ) : (
-                    <MediaIcon type={item.type} />
-                  )}
+                  {item.type === "image" && item.url ? <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: item.url }} /> : <MediaIcon type={item.type} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-primary">{item.name}</p>
                     <Badge className="shrink-0">{item.source}</Badge>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{item.prompt || item.url || item.id}</p>
-                  <Button size="sm" variant="ghost" className="mt-2 h-7 px-2 text-accent-cyan" onClick={() => addAssetToTimeline(item.id, undefined, undefined, assetUrls[item.id])}>
+                  <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{item.prompt ?? "Static demo asset"}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-text-muted">{item.duration ? `${item.duration.toFixed(1)}s` : "Still"} / {item.type}</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2 h-7 px-2 text-accent-cyan"
+                    draggable={false}
+                    onDragStart={(event) => event.preventDefault()}
+                    onClick={() => addAssetToTimeline(item.id)}
+                  >
                     <Plus className="h-3.5 w-3.5" />
                     Add
                   </Button>
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
       ) : null}
     </aside>
+  )
+}
+
+function FilterButton({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`h-8 rounded px-2 font-heading text-[10px] uppercase tracking-[0.08em] transition ${active ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:bg-elevated hover:text-text-primary"}`}
+      onClick={onClick}
+    >
+      {label} <span className="text-text-muted">{count}</span>
+    </button>
   )
 }

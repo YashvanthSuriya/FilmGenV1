@@ -1,9 +1,17 @@
-import { beforeEach, describe, expect, it } from "vitest"
-import { formatTimecode, parseTimecode } from "@/lib/editing/playback"
+import React from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { ColorGradingPanel } from "@/components/editing/color/ColorGradingPanel"
+import { EditingLayout } from "@/components/editing/EditingLayout"
+import { InspectorPanel } from "@/components/editing/InspectorPanel"
+import { MediaPanel } from "@/components/editing/MediaPanel"
+import { PreviewPlayer } from "@/components/editing/PreviewPlayer"
+import { clampPlayhead, formatTimecode, nextPlaybackPosition, parseTimecode, shouldRestartPlayback } from "@/lib/editing/playback"
 import { applyCurve, colorWheelToAdjustments, computePreviewFilter } from "@/lib/editing/colorGrade"
 import { applyTransition, removeTransition } from "@/lib/editing/transitions"
 import { createClipFromAsset, defaultTrackForAsset } from "@/lib/media/assets"
 import { useProjectStore } from "@/lib/stores/project"
+import type { ProjectAsset } from "@/lib/types"
 import {
   addClip,
   createDefaultTracks,
@@ -16,6 +24,25 @@ import {
   splitClip,
   trimClip
 } from "@/lib/editing/timeline"
+
+beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    arc: vi.fn(),
+    beginPath: vi.fn(),
+    clearRect: vi.fn(),
+    createImageData: vi.fn((width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) })),
+    fillRect: vi.fn(),
+    lineTo: vi.fn(),
+    moveTo: vi.fn(),
+    putImageData: vi.fn(),
+    stroke: vi.fn()
+  } as unknown as CanvasRenderingContext2D)
+})
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe("Phase 4 editing timeline", () => {
   it("creates the default four track editing state", () => {
@@ -108,6 +135,13 @@ describe("Phase 4 editing timeline", () => {
     expect(parseTimecode("00:00:00:24")).toBeNull()
   })
 
+  it("advances playback from elapsed time and restarts from the end", () => {
+    expect(clampPlayhead(12, 8)).toBe(8)
+    expect(shouldRestartPlayback(8, 8)).toBe(true)
+    expect(nextPlaybackPosition({ startedAt: 1000, startPosition: 2, now: 2500, speed: 2, duration: 8 })).toBe(5)
+    expect(nextPlaybackPosition({ startedAt: 1000, startPosition: 7.5, now: 2500, speed: 2, duration: 8 })).toBe(8)
+  })
+
   it("applies and removes transitions between clips on the same track", () => {
     const first = createTimelineClip({ id: "a", trackId: "track-video-v1", type: "video", name: "A", start: 0, duration: 3 })
     const second = createTimelineClip({ id: "b", trackId: "track-video-v1", type: "video", name: "B", start: 3, duration: 3 })
@@ -126,11 +160,10 @@ describe("Phase 4 editing timeline", () => {
     const tracks = createDefaultTracks()
     const videoAsset = {
       id: "asset-video",
-      source: "import" as const,
+      source: "storyboard" as const,
       type: "video" as const,
       name: "Imported Video",
       createdAt: new Date(0).toISOString(),
-      blobKey: "asset-video",
       duration: 8
     }
     const audioAsset = { ...videoAsset, id: "asset-audio", type: "audio" as const, name: "Imported Audio" }
@@ -141,18 +174,134 @@ describe("Phase 4 editing timeline", () => {
     const clip = createClipFromAsset(videoAsset, "track-video-v1", 3, "blob:local")
     expect(clip).toMatchObject({
       assetId: "asset-video",
-      source: "import",
+      source: "storyboard",
       trackId: "track-video-v1",
       type: "video",
       start: 3,
       url: "blob:local"
     })
   })
+
+})
+
+describe("Editor repair regressions", () => {
+  beforeEach(() => {
+    useProjectStore.setState({
+      assets: [
+        {
+          id: "asset-image",
+          source: "storyboard",
+          type: "image",
+          name: "Storyboard Still",
+          url: "linear-gradient(red, blue)",
+          createdAt: new Date(0).toISOString()
+        },
+        {
+          id: "asset-audio",
+          source: "workspace",
+          type: "audio",
+          name: "Room Tone",
+          duration: 4,
+          createdAt: new Date(0).toISOString()
+        }
+      ] satisfies ProjectAsset[],
+      editingState: createInitialEditingState()
+    })
+  })
+
+  it("keeps the media asset list as the scroll owner", () => {
+    const { container } = render(React.createElement(MediaPanel))
+
+    const scrollArea = container.querySelector("[data-testid='media-asset-scroll']")
+    expect(scrollArea?.className).toContain("overflow-y-auto")
+    expect(scrollArea?.className).toContain("lg:flex-col")
+  })
+
+  it("creates copy drag payloads from media cards", () => {
+    render(React.createElement(MediaPanel))
+    const card = screen.getByText("Storyboard Still").closest("[draggable='true']")
+    const data = new Map<string, string>()
+    const dataTransfer = {
+      effectAllowed: "none",
+      setData: vi.fn((type: string, value: string) => data.set(type, value))
+    }
+
+    fireEvent.dragStart(card!, { dataTransfer })
+
+    expect(dataTransfer.effectAllowed).toBe("copy")
+    expect(data.get("application/x-cine-asset")).toBe("asset-image")
+    expect(data.get("text/plain")).toBe("asset-image")
+    expect(card?.getAttribute("data-asset-type")).toBe("image")
+  })
+
+  it("rejects generated media on incompatible timeline tracks", () => {
+    const store = useProjectStore.getState()
+
+    store.addMediaClipToTimeline({ id: "generated-audio", type: "audio", name: "Generated Voice", duration: 3 }, "track-video-v1", 0)
+    expect(useProjectStore.getState().editingState.clips).toHaveLength(0)
+
+    store.addMediaClipToTimeline({ id: "generated-audio", type: "audio", name: "Generated Voice", duration: 3 }, "track-audio-a1", 0)
+    expect(useProjectStore.getState().editingState.clips[0]).toMatchObject({ mediaId: "generated-audio", trackId: "track-audio-a1", type: "audio" })
+  })
+
+  it("ignores invalid numeric inspector edits", () => {
+    const clip = createTimelineClip({ id: "clip-image", trackId: "track-video-v1", type: "image", name: "Still", duration: 5, opacity: 80 })
+    useProjectStore.setState((state) => ({ editingState: { ...state.editingState, clips: [clip], selectedClipId: clip.id } }))
+    render(React.createElement(InspectorPanel))
+
+    fireEvent.change(screen.getByLabelText("Opacity"), { target: { value: "" } })
+    expect(useProjectStore.getState().editingState.clips[0].opacity).toBe(80)
+
+    fireEvent.change(screen.getByLabelText("Opacity"), { target: { value: "140" } })
+    expect(useProjectStore.getState().editingState.clips[0].opacity).toBe(100)
+  })
+
+  it("keeps scopes visible on every color tab", () => {
+    render(React.createElement(ColorGradingPanel))
+
+    expect(screen.getByText("Waveform")).toBeTruthy()
+    fireEvent.click(screen.getByText("wheels"))
+    expect(screen.getByText("Waveform")).toBeTruthy()
+    fireEvent.click(screen.getByText("look"))
+    expect(screen.getByText("Waveform")).toBeTruthy()
+  })
+
+  it("shows selected media while paused but not in playback gaps", () => {
+    const clip = createTimelineClip({ id: "clip-image", trackId: "track-video-v1", type: "image", name: "Opening Still", start: 0, duration: 2, url: "linear-gradient(red, blue)" })
+    useProjectStore.setState((state) => ({
+      editingState: {
+        ...state.editingState,
+        clips: [clip],
+        selectedClipId: clip.id,
+        playheadPosition: 5,
+        playbackState: "paused"
+      }
+    }))
+    const { rerender } = render(React.createElement(PreviewPlayer, { duration: 8 }))
+    expect(screen.getByText("Opening Still")).toBeTruthy()
+
+    useProjectStore.setState((state) => ({ editingState: { ...state.editingState, playbackState: "playing" } }))
+    rerender(React.createElement(PreviewPlayer, { duration: 8 }))
+    expect(screen.queryByText("Opening Still")).toBeNull()
+    expect(screen.getByText("Select or scrub over media")).toBeTruthy()
+  })
+
+  it("skips editor keyboard shortcuts while an input is focused", () => {
+    const clip = createTimelineClip({ id: "clip-image", trackId: "track-video-v1", type: "image", name: "Still", duration: 5 })
+    useProjectStore.setState((state) => ({ editingState: { ...state.editingState, clips: [clip], selectedClipId: clip.id } }))
+    render(React.createElement(EditingLayout))
+
+    const nameInput = screen.getByLabelText("Name")
+    nameInput.focus()
+    fireEvent.keyDown(nameInput, { key: "Delete" })
+
+    expect(useProjectStore.getState().editingState.clips).toHaveLength(1)
+  })
 })
 
 describe("Phase 5 editing suite state", () => {
   beforeEach(() => {
-    useProjectStore.setState({ editingState: createInitialEditingState(), credits: 50, creditEvents: [] })
+    useProjectStore.setState({ editingState: createInitialEditingState() })
   })
 
   it("creates color, audio, and text defaults with the editing state", () => {
@@ -222,19 +371,16 @@ describe("Phase 5 editing suite state", () => {
     expect(useProjectStore.getState().editingState.colorGrading.curves.master.some((point) => point.id === "point-0")).toBe(true)
   })
 
-  it("updates color preview mode and audio mock state", () => {
+  it("updates color preview mode and audio mixer state", () => {
     const store = useProjectStore.getState()
 
     store.setColorPreviewMode("before")
-    store.generateMockMusic({ prompt: "pulse", duration: 240, genre: "Noir", intensity: "Intense" })
-    store.generateMockVoiceover({ script: "One two three", voice: "Ava", speed: 3, pitch: -20 })
-    store.addMockSfxToTimeline({ id: "door", name: "Door close", category: "Foley", duration: 2 }, 4)
+    store.updateAudioMixer({ reverb: 120, pan: -140 })
 
     const state = useProjectStore.getState().editingState
     expect(state.colorGrading.previewMode).toBe("before")
-    expect(state.audioState.musicTracks[0]).toMatchObject({ prompt: "pulse", duration: 180 })
-    expect(state.audioState.voiceovers[0]).toMatchObject({ voice: "Ava", speed: 2, pitch: -12 })
-    expect(state.clips[0]).toMatchObject({ type: "audio", name: "Door close", start: 4 })
+    expect(state.audioState.mixer.reverb).toBe(100)
+    expect(state.audioState.mixer.pan).toBe(-100)
   })
 
   it("updates text overlay settings for overlay clips", () => {

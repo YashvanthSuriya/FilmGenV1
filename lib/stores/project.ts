@@ -1,8 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import type {
-  AudioGenre,
-  AudioIntensity,
   AudioMixerState,
   CameraConfig,
   Character,
@@ -11,28 +8,21 @@ import type {
   ColorScopeType,
   ColorWheelKey,
   ColorWheelValue,
-  CreditTransaction,
   CurveChannel,
   FilmLutName,
   EditingState,
-  GeneratedMedia,
-  PlanTier,
   ProjectAsset,
-  SfxItem,
+  ProjectAssetType,
   StoryboardFrame,
   StudioTab,
   StyleCard,
   TextOverlayClip,
   TimelineClip,
-  TimelineTransitionType,
-  VoiceoverItem,
-  WorkspaceEdge,
-  WorkspaceNode
+  TimelineTransitionType
 } from "@/lib/types"
 import { applyTransition, removeTransition } from "@/lib/editing/transitions"
 import {
   addClip,
-  createClipFromMedia,
   createDefaultTextOverlayClip,
   createInitialEditingState,
   createTimelineClip,
@@ -46,28 +36,19 @@ import {
   trimClip,
   updateClip
 } from "@/lib/editing/timeline"
-import { assetToGeneratedMedia, createClipFromAsset, createImportedAsset, createStoryboardAsset, createWorkspaceAsset, defaultTrackForAsset } from "@/lib/media/assets"
+import { createClipFromAsset, defaultTrackForAsset } from "@/lib/media/assets"
 
 export interface ProjectStore {
   projectId: string
   projectName: string
   activeTab: StudioTab
-  credits: number
-  plan: PlanTier
-  creditEvents: CreditTransaction[]
   styleCards: StyleCard[]
   characters: Character[]
   storyboardFrames: StoryboardFrame[]
-  workspaceNodes: WorkspaceNode[]
-  workspaceEdges: WorkspaceEdge[]
   assets: ProjectAsset[]
-  generatedMedia: GeneratedMedia[]
   cameraConfig: CameraConfig
   editingState: EditingState
   setActiveTab: (tab: StudioTab) => void
-  updateCredits: (amount: number) => void
-  spendCredits: (amount: number, description: string) => boolean
-  refundCredits: (amount: number, description: string) => void
   setProjectName: (name: string) => void
   addStyleCard: (styleCard: StyleCard) => void
   addCharacter: (character: Character) => void
@@ -75,15 +56,11 @@ export interface ProjectStore {
   updateStoryboardFrame: (id: string, frame: Partial<StoryboardFrame>) => void
   duplicateStoryboardFrame: (id: string) => void
   deleteStoryboardFrame: (id: string) => void
-  addImportedAsset: (file: File) => ProjectAsset
-  addStoryboardAsset: (frameId: string) => ProjectAsset | null
-  publishWorkspaceAsset: (node: WorkspaceNode) => ProjectAsset | null
-  sendStoryboardFrameToWorkspace: (frameId: string) => { nodes: WorkspaceNode[]; edges: WorkspaceEdge[]; selectedNodeId: string } | null
-  addAssetToTimeline: (assetId: string, trackId?: string, start?: number, url?: string) => void
+  addAssetToTimeline: (assetId: string, trackId?: string, start?: number) => void
+  addMediaClipToTimeline: (media: GeneratedTimelineMedia, trackId?: string, start?: number) => void
   renameTrack: (trackId: string, name: string) => void
   toggleTrack: (trackId: string, key: "muted" | "solo" | "locked" | "expanded") => void
   reorderTimelineTracks: (activeId: string, overId: string) => void
-  addMediaClipToTimeline: (mediaId: string, trackId: string, start: number) => void
   addTimelineClip: (clip: TimelineClip) => void
   updateTimelineClip: (clipId: string, patch: Partial<TimelineClip>) => void
   moveTimelineClip: (clipId: string, trackId: string, start: number) => void
@@ -108,11 +85,17 @@ export interface ProjectStore {
   removeCurvePoint: (channel: CurveChannel, pointId: string) => void
   setActiveScope: (scope: ColorScopeType) => void
   setColorPreviewMode: (mode: ColorPreviewMode) => void
-  generateMockMusic: (input: { prompt: string; duration: number; genre: AudioGenre; intensity: AudioIntensity }) => void
-  addMockSfxToTimeline: (sfx: SfxItem, start?: number) => void
-  generateMockVoiceover: (input: { script: string; voice: string; speed: number; pitch: number }) => void
   updateAudioMixer: (patch: Partial<AudioMixerState>) => void
   updateTextOverlay: (clipId: string, patch: Partial<TextOverlayClip>) => void
+}
+
+export interface GeneratedTimelineMedia {
+  id: string
+  type: ProjectAssetType
+  name: string
+  duration?: number
+  url?: string
+  thumbnailUrl?: string
 }
 
 export const defaultCameraConfig: CameraConfig = {
@@ -123,8 +106,187 @@ export const defaultCameraConfig: CameraConfig = {
   fps: 24
 }
 
-function upsertAsset(assets: ProjectAsset[], asset: ProjectAsset) {
-  return [asset, ...assets.filter((item) => item.id !== asset.id)]
+const demoDate = "2026-05-23T12:00:00.000Z"
+
+export const demoStyleCards: StyleCard[] = [
+  {
+    id: "style-neon-noir",
+    name: "Neon Rain Noir",
+    description: "Wet pavement, cyan signage, amber practicals, and high-contrast night exteriors.",
+    referenceImages: [],
+    generatedImages: [
+      "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(15,15,18,0.96) 48%, rgba(255,184,0,0.2))"
+    ],
+    keywords: ["neon", "rain", "noir", "cyan", "amber", "contrast"],
+    mood: "Tense / Reflective / Cinematic",
+    palette: ["#00E5FF", "#FFB800", "#101014", "#5D6D7E", "#F0F0F0"]
+  },
+  {
+    id: "style-solar-western",
+    name: "Solar Western",
+    description: "Dusty daylight, analog film texture, bleached skies, and warm hard shadows.",
+    referenceImages: [],
+    generatedImages: [
+      "linear-gradient(135deg, rgba(255,184,0,0.28), rgba(208,92,38,0.18), rgba(22,26,32,0.9))"
+    ],
+    keywords: ["sun", "dust", "35mm", "wide", "amber", "texture"],
+    mood: "Expansive / Gritty / Human",
+    palette: ["#FFB800", "#D05C26", "#293241", "#E0FBFC", "#111111"]
+  }
+]
+
+export const demoCharacters: Character[] = [
+  {
+    id: "character-mira",
+    name: "Mira Vale",
+    role: "Courier",
+    description: "Silver cropped hair, black raincoat, alert eyes, and a guarded posture.",
+    emotions: ["Neutral", "Focused", "Alarmed", "Resolved"],
+    portraitUrls: [
+      "linear-gradient(135deg, rgba(0,229,255,0.22), rgba(18,18,22,0.96), rgba(255,184,0,0.12))",
+      "linear-gradient(135deg, rgba(155,89,255,0.18), rgba(18,18,22,0.96), rgba(0,229,255,0.18))"
+    ],
+    styleCardIds: ["style-neon-noir"]
+  },
+  {
+    id: "character-orren",
+    name: "Orren Pike",
+    role: "Fixer",
+    description: "Weathered coat, brass spectacles, quiet smile, and a pocket full of secrets.",
+    emotions: ["Neutral", "Concerned", "Amused", "Severe"],
+    portraitUrls: [
+      "linear-gradient(135deg, rgba(255,184,0,0.22), rgba(28,24,19,0.95), rgba(0,229,255,0.1))"
+    ],
+    styleCardIds: ["style-neon-noir", "style-solar-western"]
+  }
+]
+
+export const demoStoryboardFrames: StoryboardFrame[] = [
+  {
+    id: "shot-market-reveal",
+    title: "Market Reveal",
+    prompt: "A wide shot reveals Mira crossing a flooded night market while search drones rake light over the crowd.",
+    shotType: "Wide",
+    cameraMovement: "Dolly",
+    aspectRatio: "16:9",
+    referenceImages: [demoStyleCards[0].generatedImages[0]],
+    imageUrl: "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(7,8,13,0.96) 46%, rgba(255,184,0,0.16))"
+  },
+  {
+    id: "shot-close-listen",
+    title: "Signal Close-Up",
+    prompt: "Close on Mira as a hidden earpiece flickers blue and she realizes the message is coming from inside the market.",
+    shotType: "Close-up",
+    cameraMovement: "Static",
+    aspectRatio: "16:9",
+    referenceImages: [demoCharacters[0].portraitUrls[0]],
+    imageUrl: "linear-gradient(135deg, rgba(155,89,255,0.2), rgba(3,5,10,0.96), rgba(0,229,255,0.2))"
+  },
+  {
+    id: "shot-rooftop-choice",
+    title: "Rooftop Choice",
+    prompt: "A quiet rooftop beat where Mira looks over the glowing city and decides whether to run or expose the signal.",
+    shotType: "Medium",
+    cameraMovement: "Pan",
+    aspectRatio: "16:9",
+    referenceImages: [],
+    imageUrl: "linear-gradient(135deg, rgba(255,184,0,0.18), rgba(9,11,18,0.94), rgba(0,229,255,0.18))"
+  }
+]
+
+export const demoAssets: ProjectAsset[] = [
+  {
+    id: "asset-market-reveal",
+    source: "storyboard",
+    type: "image",
+    name: "Market Reveal",
+    prompt: demoStoryboardFrames[0].prompt,
+    url: demoStoryboardFrames[0].imageUrl,
+    thumbnailUrl: demoStoryboardFrames[0].imageUrl,
+    duration: 5,
+    createdAt: demoDate,
+    storyboardFrameId: "shot-market-reveal"
+  },
+  {
+    id: "asset-signal-closeup",
+    source: "storyboard",
+    type: "image",
+    name: "Signal Close-Up",
+    prompt: demoStoryboardFrames[1].prompt,
+    url: demoStoryboardFrames[1].imageUrl,
+    thumbnailUrl: demoStoryboardFrames[1].imageUrl,
+    duration: 4,
+    createdAt: demoDate,
+    storyboardFrameId: "shot-close-listen"
+  },
+  {
+    id: "asset-city-bed",
+    source: "storyboard",
+    type: "audio",
+    name: "City Night Bed",
+    prompt: "Static demo audio bed represented on the timeline.",
+    duration: 9,
+    createdAt: demoDate
+  }
+]
+
+function createDemoEditingState(): EditingState {
+  const state = createInitialEditingState()
+  const market = createClipFromAsset(demoAssets[0], "track-video-v1", 0)
+  const closeup = createClipFromAsset(demoAssets[1], "track-video-v1", 5.25)
+  const ambience = createClipFromAsset(demoAssets[2], "track-audio-a1", 0)
+  const title = createTimelineClip({
+    id: "clip-title-demo",
+    trackId: "track-overlay-o1",
+    type: "overlay",
+    name: "Opening Title",
+    start: 0.5,
+    duration: 3,
+    color: "var(--accent-purple)"
+  })
+
+  return {
+    ...state,
+    clips: [market, closeup, ambience, title],
+    selectedClipId: market.id,
+    textOverlays: {
+      clips: [
+        {
+          ...createDefaultTextOverlayClip(title.id, "A NIGHT IN NEON"),
+          size: 48,
+          animation: "Glow"
+        }
+      ]
+    },
+    audioState: {
+      ...state.audioState,
+      musicTracks: [
+        {
+          id: "music-demo-pulse",
+          prompt: "Slow cinematic pulse with analog strings",
+          duration: 32,
+          genre: "Cinematic",
+          intensity: "Moderate",
+          createdAt: demoDate
+        }
+      ],
+      sfx: [
+        { id: "rain-window", name: "Rain on window", category: "Weather", duration: 8 },
+        { id: "neon-hum", name: "Neon transformer hum", category: "Sci-Fi", duration: 6 }
+      ],
+      voiceovers: [
+        {
+          id: "voiceover-demo",
+          script: "The city exhaled neon, and she finally heard the truth.",
+          voice: "Ava - Warm Narrator",
+          duration: 4,
+          speed: 1,
+          pitch: 0,
+          createdAt: demoDate
+        }
+      ]
+    }
+  }
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -135,125 +297,17 @@ function sortCurvePoints<T extends { x: number }>(points: T[]) {
   return [...points].sort((a, b) => a.x - b.x)
 }
 
-export function createWorkspaceNodesFromFrame(frame: StoryboardFrame, index: number) {
-  const baseX = 120 + index * 60
-  const baseY = 120 + index * 40
-  const promptNode: WorkspaceNode = {
-    id: `storyboard-prompt-${frame.id}-${Date.now()}`,
-    type: "prompt",
-    position: { x: baseX, y: baseY },
-    data: {
-      label: frame.title,
-      prompt: frame.prompt,
-      sourcePrompt: frame.prompt,
-      storyboardFrameId: frame.id,
-      aspectRatio: frame.aspectRatio,
-      referenceImages: frame.referenceImages,
-      status: "idle"
-    }
-  }
-  const cameraNode: WorkspaceNode = {
-    id: `storyboard-camera-${frame.id}-${Date.now()}`,
-    type: "cameraConfig",
-    position: { x: baseX, y: baseY + 260 },
-    data: {
-      label: `${frame.shotType} ${frame.cameraMovement}`,
-      camera: {
-        ...defaultCameraConfig,
-        movement: frame.cameraMovement,
-        angle: frame.shotType
-      },
-      storyboardFrameId: frame.id,
-      status: "idle"
-    }
-  }
-  const outputNode: WorkspaceNode = {
-    id: `storyboard-output-${frame.id}-${Date.now()}`,
-    type: "imageOutput",
-    position: { x: baseX + 460, y: baseY + 90 },
-    data: {
-      label: `${frame.title} Output`,
-      sourcePrompt: frame.prompt,
-      storyboardFrameId: frame.id,
-      previewUrl: frame.imageUrl,
-      output: "Storyboard frame ready to publish",
-      status: "idle"
-    }
-  }
-  const edges: WorkspaceEdge[] = [
-    {
-      id: `edge-${promptNode.id}-${outputNode.id}`,
-      source: promptNode.id,
-      target: outputNode.id,
-      type: "custom",
-      animated: true,
-      data: { status: "idle" }
-    },
-    {
-      id: `edge-${cameraNode.id}-${outputNode.id}`,
-      source: cameraNode.id,
-      target: outputNode.id,
-      type: "custom",
-      animated: true,
-      data: { status: "idle" }
-    }
-  ]
-  return { nodes: [promptNode, cameraNode, outputNode], edges, selectedNodeId: outputNode.id }
-}
-
-export const useProjectStore = create<ProjectStore>()(persist((set) => ({
-  projectId: "local-phase-1",
-  projectName: "Untitled Project",
+export const useProjectStore = create<ProjectStore>((set) => ({
+  projectId: "demo-cine-studio",
+  projectName: "Neon Signal Demo",
   activeTab: "storyboard",
-  credits: 50,
-  plan: "free",
-  creditEvents: [],
-  styleCards: [],
-  characters: [],
-  storyboardFrames: [],
-  workspaceNodes: [],
-  workspaceEdges: [],
-  assets: [],
-  generatedMedia: [],
+  styleCards: demoStyleCards,
+  characters: demoCharacters,
+  storyboardFrames: demoStoryboardFrames,
+  assets: demoAssets,
   cameraConfig: defaultCameraConfig,
-  editingState: createInitialEditingState(),
+  editingState: createDemoEditingState(),
   setActiveTab: (activeTab) => set({ activeTab }),
-  updateCredits: (amount) => set((state) => ({ credits: Math.max(0, state.credits + amount) })),
-  spendCredits: (amount, description) => {
-    let didSpend = false
-    set((state) => {
-      if (state.credits < amount) return state
-      didSpend = true
-      return {
-        credits: state.credits - amount,
-        creditEvents: [
-          {
-            id: `credit-${Date.now()}-${state.creditEvents.length}`,
-            type: "spend",
-            amount: -amount,
-            description,
-            createdAt: new Date().toISOString()
-          },
-          ...state.creditEvents
-        ]
-      }
-    })
-    return didSpend
-  },
-  refundCredits: (amount, description) =>
-    set((state) => ({
-      credits: state.credits + amount,
-      creditEvents: [
-        {
-          id: `credit-${Date.now()}-${state.creditEvents.length}`,
-          type: "refund",
-          amount,
-          description,
-          createdAt: new Date().toISOString()
-        },
-        ...state.creditEvents
-      ]
-    })),
   setProjectName: (projectName) => set({ projectName }),
   addStyleCard: (styleCard) => set((state) => ({ styleCards: [styleCard, ...state.styleCards] })),
   addCharacter: (character) => set((state) => ({ characters: [character, ...state.characters] })),
@@ -278,58 +332,7 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
     }),
   deleteStoryboardFrame: (id) =>
     set((state) => ({ storyboardFrames: state.storyboardFrames.filter((frame) => frame.id !== id) })),
-  addImportedAsset: (file) => {
-    const asset = createImportedAsset(file)
-    set((state) => ({
-      assets: upsertAsset(state.assets, asset),
-      generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset.id)]
-    }))
-    return asset
-  },
-  addStoryboardAsset: (frameId) => {
-    let asset: ProjectAsset | null = null
-    set((state) => {
-      const frame = state.storyboardFrames.find((item) => item.id === frameId)
-      if (!frame) return state
-      asset = createStoryboardAsset(frame)
-      return {
-        assets: upsertAsset(state.assets, asset),
-        generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset!.id)]
-      }
-    })
-    return asset
-  },
-  publishWorkspaceAsset: (node) => {
-    if (node.type !== "imageOutput" && node.type !== "videoOutput") return null
-    const asset = createWorkspaceAsset(node)
-    set((state) => ({
-      assets: upsertAsset(state.assets, asset),
-      generatedMedia: [assetToGeneratedMedia(asset), ...state.generatedMedia.filter((item) => item.assetId !== asset.id)]
-    }))
-    return asset
-  },
-  sendStoryboardFrameToWorkspace: (frameId) => {
-    let result: { nodes: WorkspaceNode[]; edges: WorkspaceEdge[]; selectedNodeId: string } | null = null
-    set((state) => {
-      const frame = state.storyboardFrames.find((item) => item.id === frameId)
-      if (!frame) return state
-      result = createWorkspaceNodesFromFrame(frame, state.workspaceNodes.length)
-      const asset = createStoryboardAsset(frame)
-      const workspaceAsset = createWorkspaceAsset(result.nodes[2])
-      return {
-        workspaceNodes: [...state.workspaceNodes, ...result.nodes],
-        workspaceEdges: [...state.workspaceEdges, ...result.edges],
-        assets: upsertAsset(upsertAsset(state.assets, workspaceAsset), asset),
-        generatedMedia: [
-          assetToGeneratedMedia(workspaceAsset),
-          assetToGeneratedMedia(asset),
-          ...state.generatedMedia.filter((item) => item.assetId !== asset.id && item.assetId !== workspaceAsset.id)
-        ]
-      }
-    })
-    return result
-  },
-  addAssetToTimeline: (assetId, trackId, start, url) =>
+  addAssetToTimeline: (assetId, trackId, start) =>
     set((state) => {
       const asset = state.assets.find((item) => item.id === assetId)
       if (!asset) return state
@@ -341,7 +344,39 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
       if (asset.type !== "audio" && track.type !== "video") return state
       const trackClips = state.editingState.clips.filter((item) => item.trackId === track.id)
       const appendStart = trackClips.length > 0 ? Math.max(...trackClips.map((item) => item.start + item.duration)) + 0.25 : 0
-      const draftClip = createClipFromAsset(asset, track.id, start === undefined ? appendStart : start, url)
+      const draftClip = createClipFromAsset(asset, track.id, start === undefined ? appendStart : start)
+      const clip = {
+        ...draftClip,
+        start: resolveClipStart(state.editingState.clips, draftClip.id, track.id, draftClip.start, draftClip.duration)
+      }
+      return {
+        editingState: {
+          ...state.editingState,
+          clips: addClip(state.editingState.clips, clip),
+          selectedClipId: clip.id
+        }
+      }
+    }),
+  addMediaClipToTimeline: (media, trackId, start) =>
+    set((state) => {
+      const compatibleType = media.type === "audio" ? "audio" : "video"
+      const track = trackId
+        ? state.editingState.tracks.find((item) => item.id === trackId)
+        : state.editingState.tracks.find((item) => item.type === compatibleType && !item.locked) ?? state.editingState.tracks.find((item) => item.type === compatibleType)
+      if (!track || track.locked || track.type !== compatibleType) return state
+      const trackClips = state.editingState.clips.filter((item) => item.trackId === track.id)
+      const appendStart = trackClips.length > 0 ? Math.max(...trackClips.map((item) => item.start + item.duration)) + 0.25 : 0
+      const draftClip = createTimelineClip({
+        id: `clip-${media.id}-${Date.now()}`,
+        mediaId: media.id,
+        trackId: track.id,
+        type: media.type,
+        name: media.name,
+        duration: media.duration ?? (media.type === "image" ? 5 : 8),
+        start: start === undefined ? appendStart : start,
+        url: media.url,
+        thumbnailUrl: media.thumbnailUrl
+      })
       const clip = {
         ...draftClip,
         start: resolveClipStart(state.editingState.clips, draftClip.id, track.id, draftClip.start, draftClip.duration)
@@ -375,20 +410,6 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
         tracks: reorderTracks(state.editingState.tracks, activeId, overId)
       }
     })),
-  addMediaClipToTimeline: (mediaId, trackId, start) =>
-    set((state) => {
-      const media = state.generatedMedia.find((item) => item.id === mediaId)
-      const track = state.editingState.tracks.find((item) => item.id === trackId)
-      if (!media || !track || track.locked) return state
-      const clip = createClipFromMedia(media, trackId, start)
-      return {
-        editingState: {
-          ...state.editingState,
-          clips: addClip(state.editingState.clips, clip),
-          selectedClipId: clip.id
-        }
-      }
-    }),
   addTimelineClip: (clip) =>
     set((state) => ({
       editingState: {
@@ -473,14 +494,14 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
     set((state) => ({
       editingState: {
         ...state.editingState,
-        volume: Math.min(100, Math.max(0, volume))
+        volume: clamp(volume, 0, 100)
       }
     })),
   setTimelineZoom: (timelineZoom) =>
     set((state) => ({
       editingState: {
         ...state.editingState,
-        timelineZoom: Math.min(3, Math.max(0.5, timelineZoom))
+        timelineZoom: clamp(timelineZoom, 0.5, 3)
       }
     })),
   applyTimelineTransition: (fromClipId, toClipId, type) =>
@@ -615,8 +636,7 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
     set((state) => {
       const editingState = ensureEditingStateDefaults(state.editingState)
       const curve = editingState.colorGrading.curves[channel]
-      if (pointId === "point-0" || pointId === "point-1") return { editingState }
-      if (curve.length <= 2) return { editingState }
+      if (pointId === "point-0" || pointId === "point-1" || curve.length <= 2) return { editingState }
       return {
         editingState: {
           ...editingState,
@@ -639,76 +659,6 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
     set((state) => {
       const editingState = ensureEditingStateDefaults(state.editingState)
       return { editingState: { ...editingState, colorGrading: { ...editingState.colorGrading, previewMode } } }
-    }),
-  generateMockMusic: (input) =>
-    set((state) => {
-      const editingState = ensureEditingStateDefaults(state.editingState)
-      const track = {
-        id: `music-${Date.now()}-${editingState.audioState.musicTracks.length}`,
-        prompt: input.prompt,
-        duration: clamp(input.duration, 5, 180),
-        genre: input.genre,
-        intensity: input.intensity,
-        createdAt: new Date().toISOString()
-      }
-      return {
-        editingState: {
-          ...editingState,
-          audioState: {
-            ...editingState.audioState,
-            musicTracks: [track, ...editingState.audioState.musicTracks]
-          }
-        }
-      }
-    }),
-  addMockSfxToTimeline: (sfx, start = 0) =>
-    set((state) => {
-      const editingState = ensureEditingStateDefaults(state.editingState)
-      const audioTrack = editingState.tracks.find((track) => track.type === "audio" && !track.locked)
-      if (!audioTrack) return { editingState }
-      const clip = createTimelineClip({
-        id: `clip-sfx-${sfx.id}-${Date.now()}`,
-        trackId: audioTrack.id,
-        type: "audio",
-        name: sfx.name,
-        start,
-        duration: sfx.duration,
-        color: "var(--accent-amber)"
-      })
-      return {
-        editingState: {
-          ...editingState,
-          clips: addClip(editingState.clips, clip),
-          selectedClipId: clip.id,
-          audioState: {
-            ...editingState.audioState,
-            sfx: [sfx, ...editingState.audioState.sfx.filter((item) => item.id !== sfx.id)]
-          }
-        }
-      }
-    }),
-  generateMockVoiceover: (input) =>
-    set((state) => {
-      const editingState = ensureEditingStateDefaults(state.editingState)
-      const words = input.script.trim().split(/\s+/).filter(Boolean).length
-      const voiceover: VoiceoverItem = {
-        id: `voiceover-${Date.now()}-${editingState.audioState.voiceovers.length}`,
-        script: input.script,
-        voice: input.voice,
-        duration: Math.max(1, Math.round((words / 150) * 60)),
-        speed: clamp(input.speed, 0.5, 2),
-        pitch: clamp(input.pitch, -12, 12),
-        createdAt: new Date().toISOString()
-      }
-      return {
-        editingState: {
-          ...editingState,
-          audioState: {
-            ...editingState.audioState,
-            voiceovers: [voiceover, ...editingState.audioState.voiceovers]
-          }
-        }
-      }
     }),
   updateAudioMixer: (patch) =>
     set((state) => {
@@ -754,31 +704,4 @@ export const useProjectStore = create<ProjectStore>()(persist((set) => ({
         }
       }
     })
-}), {
-  name: "cine-studio-project",
-  merge: (persisted, current) => {
-    const saved = (persisted ?? {}) as Partial<ProjectStore>
-    const next = { ...current, ...saved }
-    return {
-      ...next,
-      editingState: ensureEditingStateDefaults(next.editingState)
-    } as ProjectStore
-  },
-  partialize: (state) => ({
-    projectId: state.projectId,
-    projectName: state.projectName,
-    activeTab: state.activeTab,
-    credits: state.credits,
-    plan: state.plan,
-    creditEvents: state.creditEvents,
-    styleCards: state.styleCards,
-    characters: state.characters,
-    storyboardFrames: state.storyboardFrames,
-    workspaceNodes: state.workspaceNodes,
-    workspaceEdges: state.workspaceEdges,
-    assets: state.assets,
-    generatedMedia: state.generatedMedia,
-    cameraConfig: state.cameraConfig,
-    editingState: state.editingState
-  })
 }))

@@ -1,24 +1,25 @@
 "use client"
 
 import type React from "react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { Maximize2, Minus, Plus } from "lucide-react"
 import { TrackHeader } from "@/components/editing/TrackHeader"
 import { ClipBlock } from "@/components/editing/ClipBlock"
 import { TransitionOverlay } from "@/components/editing/TransitionOverlay"
+import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
-import { formatTimecode } from "@/lib/editing/playback"
-import { createObjectUrlForBlobKey } from "@/lib/media/indexedDb"
-import type { SfxItem } from "@/lib/types"
+import { clampPlayhead, formatTimecode } from "@/lib/editing/playback"
+import type { ProjectAsset, TimelineTrack } from "@/lib/types"
 
 const SECOND_WIDTH = 72
 const TRACK_HEIGHT = 72
 
 export function Timeline({ duration }: { duration: number }) {
+  const [dragState, setDragState] = useState<{ trackId: string; compatible: boolean; hint: string } | null>(null)
+  const [dropStatus, setDropStatus] = useState<string | null>(null)
   const editing = useProjectStore((state) => state.editingState)
   const assets = useProjectStore((state) => state.assets)
-  const addMediaClipToTimeline = useProjectStore((state) => state.addMediaClipToTimeline)
   const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
-  const addMockSfxToTimeline = useProjectStore((state) => state.addMockSfxToTimeline)
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
   const setTimelineZoom = useProjectStore((state) => state.setTimelineZoom)
   const orderedTracks = useMemo(() => [...editing.tracks].sort((a, b) => a.order - b.order), [editing.tracks])
@@ -28,21 +29,83 @@ export function Timeline({ duration }: { duration: number }) {
   function seekFromEvent(event: React.PointerEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - rect.left
-    setPlayheadPosition(Math.min(duration, Math.max(0, x / (SECOND_WIDTH * editing.timelineZoom))))
+    setPlayheadPosition(clampPlayhead(x / (SECOND_WIDTH * editing.timelineZoom), duration))
+  }
+
+  function fitTimeline() {
+    const viewport = document.querySelector("[data-timeline-scroll]")?.clientWidth ?? 900
+    const nextZoom = Math.max(0.5, Math.min(3, viewport / Math.max(1, displayDuration * SECOND_WIDTH)))
+    setTimelineZoom(nextZoom)
+  }
+
+  function getDragPayload(dataTransfer: DataTransfer) {
+    const assetId = dataTransfer.getData("application/x-cine-asset") || dataTransfer.getData("text/plain")
+    return { assetId }
+  }
+
+  function isTrackCompatible(track: TimelineTrack, payload: { assetId: string }) {
+    if (track.locked) return false
+    if (payload.assetId) {
+      const asset = assets.find((item) => item.id === payload.assetId)
+      return asset ? isVisualOrAudioCompatible(track, asset) : false
+    }
+    return false
+  }
+
+  function getDropHint(track: TimelineTrack, compatible: boolean) {
+    if (compatible) return track.type === "audio" ? "Drop audio here" : "Drop image/video here"
+    if (track.locked) return "Track is locked"
+    return track.type === "audio" ? "Drop audio on audio tracks" : "Drop image/video on video tracks"
+  }
+
+  function handleTimelineDrop(track: TimelineTrack, event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setDragState(null)
+    const payload = getDragPayload(event.dataTransfer)
+    if (!payload.assetId) return
+    const compatible = isTrackCompatible(track, payload)
+    if (!compatible) {
+      setDropStatus(getDropHint(track, false))
+      window.setTimeout(() => setDropStatus(null), 1800)
+      return
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const start = Math.max(0, (event.clientX - rect.left) / (SECOND_WIDTH * editing.timelineZoom))
+    const asset = assets.find((item) => item.id === payload.assetId)
+    if (!asset) {
+      setDropStatus("Media asset not found")
+    } else {
+      addAssetToTimeline(asset.id, track.id, start)
+      setDropStatus(`${asset.type === "audio" ? "Audio" : "Visual"} added`)
+    }
+    window.setTimeout(() => setDropStatus(null), 1800)
   }
 
   return (
     <section
-      className="min-h-0 overflow-hidden bg-background"
+      className="relative min-h-0 overflow-hidden bg-background"
       onWheel={(event) => {
         if (!event.ctrlKey) return
         event.preventDefault()
         setTimelineZoom(editing.timelineZoom + (event.deltaY > 0 ? -0.1 : 0.1))
       }}
     >
-      <div className="flex h-full overflow-auto">
+      <div className="flex h-full overflow-auto" data-timeline-scroll>
         <div className="sticky left-0 z-30 w-[var(--timeline-header-width)] shrink-0 border-r border-border-subtle bg-surface">
-          <div className="h-10 border-b border-border-subtle px-3 py-2 font-heading text-xs uppercase tracking-[0.08em] text-text-muted">Tracks</div>
+          <div className="flex h-10 items-center justify-between gap-1 border-b border-border-subtle px-2 py-1">
+            <span className="font-heading text-xs uppercase tracking-[0.08em] text-text-muted">Tracks</span>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Zoom out timeline" onClick={() => setTimelineZoom(editing.timelineZoom - 0.1)}>
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Fit timeline" onClick={fitTimeline}>
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Zoom in timeline" onClick={() => setTimelineZoom(editing.timelineZoom + 0.1)}>
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
           {orderedTracks.map((track) => (
             <div key={track.id} style={{ height: track.expanded ? TRACK_HEIGHT : 44 }}>
               <TrackHeader track={track} />
@@ -70,28 +133,33 @@ export function Timeline({ duration }: { duration: number }) {
                   key={track.id}
                   className="relative border-b border-border-subtle bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)]"
                   style={{ height: trackHeight, backgroundSize: `${SECOND_WIDTH * editing.timelineZoom}px 100%` }}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    const mediaId = event.dataTransfer.getData("application/x-cine-media")
-                    const assetId = event.dataTransfer.getData("application/x-cine-asset")
-                    const sfxPayload = event.dataTransfer.getData("application/x-cine-sfx")
-                    if (!mediaId && !assetId && !sfxPayload) return
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    const start = (event.clientX - rect.left) / (SECOND_WIDTH * editing.timelineZoom)
-                    if (sfxPayload) {
-                      try {
-                        addMockSfxToTimeline(JSON.parse(sfxPayload) as SfxItem, start)
-                      } catch {
-                        // Ignore malformed drag payloads from outside the app.
-                      }
-                    } else if (assetId) {
-                      const asset = assets.find((item) => item.id === assetId)
-                      void createObjectUrlForBlobKey(asset?.blobKey).then((url) => addAssetToTimeline(assetId, track.id, start, url))
-                    } else {
-                      addMediaClipToTimeline(mediaId, track.id, start)
+                  onDragEnter={(event) => {
+                    const payload = getDragPayload(event.dataTransfer)
+                    if (payload.assetId) {
+                      const compatible = isTrackCompatible(track, payload)
+                      setDragState({ trackId: track.id, compatible, hint: getDropHint(track, compatible) })
                     }
                   }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragState(null)
+                  }}
+                  onDragOver={(event) => {
+                    const payload = getDragPayload(event.dataTransfer)
+                    if (!payload.assetId) return
+                    event.preventDefault()
+                    const compatible = isTrackCompatible(track, payload)
+                    event.dataTransfer.dropEffect = compatible ? "copy" : "none"
+                    if (dragState?.trackId !== track.id || dragState.compatible !== compatible) {
+                      setDragState({ trackId: track.id, compatible, hint: getDropHint(track, compatible) })
+                    }
+                  }}
+                  onDrop={(event) => handleTimelineDrop(track, event)}
                 >
+                  {dragState?.trackId === track.id ? (
+                    <div className={`pointer-events-none absolute inset-1 z-10 grid place-items-center rounded border text-[10px] uppercase tracking-[0.08em] ${dragState.compatible ? "border-accent-cyan bg-accent-cyan-dim text-accent-cyan" : "border-accent-red bg-accent-red/10 text-accent-red"}`}>
+                      {dragState.hint}
+                    </div>
+                  ) : null}
                   {trackClips.map((clip) => (
                     <ClipBlock
                       key={clip.id}
@@ -114,6 +182,12 @@ export function Timeline({ duration }: { duration: number }) {
           </div>
         </div>
       </div>
+      {dropStatus ? <div className="pointer-events-none absolute bottom-3 right-3 z-40 rounded bg-black/80 px-3 py-2 text-xs text-text-secondary">{dropStatus}</div> : null}
     </section>
   )
+}
+
+function isVisualOrAudioCompatible(track: TimelineTrack, asset: ProjectAsset) {
+  if (asset.type === "audio") return track.type === "audio"
+  return track.type === "video"
 }

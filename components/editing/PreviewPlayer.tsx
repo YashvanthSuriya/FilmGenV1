@@ -5,8 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Maximize2, Minimize2, MonitorPlay, Pause, Play, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
-import { formatTimecode } from "@/lib/editing/playback"
-import { createObjectUrlForBlobKey } from "@/lib/media/indexedDb"
+import { formatTimecode, shouldRestartPlayback } from "@/lib/editing/playback"
 import { computeGradeOverlay, computePreviewFilter } from "@/lib/editing/colorGrade"
 
 export function PreviewPlayer({ duration }: { duration: number }) {
@@ -22,15 +21,15 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   const textOverlay = useProjectStore((state) => state.editingState.textOverlays.clips.find((clip) => clip.clipId === state.editingState.selectedClipId))
   const setPlaybackState = useProjectStore((state) => state.setPlaybackState)
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
-  const [resolvedUrl, setResolvedUrl] = useState<string | undefined>()
 
   const activeClip = useMemo(() => {
     const atPlayhead = clips
-      .filter((clip) => (clip.type === "video" || clip.type === "image") && playheadPosition >= clip.start && playheadPosition <= clip.start + clip.duration)
+      .filter((clip) => (clip.type === "video" || clip.type === "image") && playheadPosition >= clip.start && playheadPosition < clip.start + clip.duration)
       .sort((a, b) => b.start - a.start)[0]
     if (atPlayhead) return atPlayhead
+    if (playing) return undefined
     return clips.find((clip) => clip.id === selectedClipId && (clip.type === "video" || clip.type === "image"))
-  }, [clips, playheadPosition, selectedClipId])
+  }, [clips, playheadPosition, playing, selectedClipId])
 
   const mediaFilter = colorGrading.previewMode === "before" ? "none" : computePreviewFilter(colorGrading)
   const gradeOverlay = computeGradeOverlay(colorGrading)
@@ -39,43 +38,31 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   useEffect(() => {
     const video = videoRef.current
     if (!video || !activeClip || activeClip.type !== "video") return
-    if (Math.abs(video.currentTime - localTime) > 0.2) video.currentTime = localTime
+    if (Math.abs(video.currentTime - localTime) > 0.35) video.currentTime = localTime
     video.playbackRate = activeClip.speed
-    if (playing) {
+    if (playing && activeClip.type === "video") {
       void video.play().catch(() => undefined)
     } else {
       video.pause()
     }
   }, [activeClip, localTime, playing])
 
-  useEffect(() => {
-    let cancelled = false
-    let objectUrl: string | undefined
-    async function resolveUrl() {
-      if (!activeClip) {
-        setResolvedUrl(undefined)
-        return
-      }
-      if (activeClip.url) {
-        setResolvedUrl(activeClip.url)
-        return
-      }
-      const asset = assets.find((item) => item.id === activeClip.assetId)
-      const url = await createObjectUrlForBlobKey(asset?.blobKey)
-      objectUrl = url ?? undefined
-      if (!cancelled) setResolvedUrl(url ?? undefined)
-    }
-    void resolveUrl()
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [activeClip, assets])
+  const resolvedUrl = activeClip?.url ?? assets.find((item) => item.id === activeClip?.assetId)?.url
 
   function seek(event: React.PointerEvent<HTMLDivElement>) {
+    if (duration <= 0) return
     const rect = event.currentTarget.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
     setPlayheadPosition(ratio * duration)
+  }
+
+  function togglePlayback() {
+    if (playing) {
+      setPlaybackState("paused")
+      return
+    }
+    if (shouldRestartPlayback(playheadPosition, duration)) setPlayheadPosition(0)
+    setPlaybackState("playing")
   }
 
   async function openFullscreen() {
@@ -103,12 +90,12 @@ export function PreviewPlayer({ duration }: { duration: number }) {
     >
       <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_center,rgba(0,229,255,0.1),transparent_34%),#020202]">
         {resolvedUrl && activeClip?.type === "video" ? (
-          <video ref={videoRef} key={resolvedUrl} className="h-full w-full object-contain" src={resolvedUrl} muted playsInline style={{ filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} onPointerDown={(event) => event.stopPropagation()} />
+          <video ref={videoRef} key={resolvedUrl} className="h-full w-full" src={resolvedUrl} muted playsInline style={{ objectFit: activeClip.fit, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} onPointerDown={(event) => event.stopPropagation()} />
         ) : resolvedUrl && activeClip?.type === "image" && resolvedUrl.startsWith("linear-gradient") ? (
           <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: resolvedUrl, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : resolvedUrl && activeClip?.type === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="h-full w-full object-contain" src={resolvedUrl} alt={activeClip.name} style={{ filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
+          <img className="h-full w-full" src={resolvedUrl} alt={activeClip.name} style={{ objectFit: activeClip.fit, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : (
           <div className="flex flex-col items-center gap-3 text-text-muted">
             <MonitorPlay className="h-12 w-12 text-border-strong" />
@@ -145,7 +132,7 @@ export function PreviewPlayer({ duration }: { duration: number }) {
           {textOverlay.text}
         </div>
       ) : null}
-      <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-3 opacity-100 transition">
+      <div className="absolute inset-x-0 top-0 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-3 opacity-100 transition" onPointerDown={(event) => event.stopPropagation()}>
         <span className="rounded bg-accent-cyan-dim px-2 py-1 font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">1920 x 1080</span>
         <div className="text-right">
           <span className="rounded bg-black/70 px-2 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-secondary">
@@ -157,13 +144,13 @@ export function PreviewPlayer({ duration }: { duration: number }) {
           {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-100 transition">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-100 transition" onPointerDown={(event) => event.stopPropagation()}>
         <div className="h-1 rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-accent-cyan" style={{ width: `${Math.min(100, (playheadPosition / duration) * 100)}%` }} />
+          <div className="h-full rounded-full bg-accent-cyan" style={{ width: `${duration > 0 ? Math.min(100, (playheadPosition / duration) * 100) : 0}%` }} />
         </div>
         <div className="mt-2 flex items-center justify-between font-body text-xs text-text-secondary">
           <span>{formatTimecode(playheadPosition)}</span>
-          <Button size="sm" variant="ghost" onClick={() => setPlaybackState(playing ? "paused" : "playing")}>
+          <Button size="sm" variant="ghost" onClick={togglePlayback} disabled={duration <= 0}>
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {playing ? "Pause" : "Play"}
           </Button>

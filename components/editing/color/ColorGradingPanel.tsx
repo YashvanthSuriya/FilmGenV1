@@ -36,8 +36,11 @@ export function ColorGradingPanel() {
       </div>
       {tab === "primary" ? <ManualControls /> : null}
       {tab === "wheels" ? <ColorWheels /> : null}
-      {tab === "curves" ? <><CurvesEditor /><Scopes /></> : null}
+      {tab === "curves" ? <CurvesEditor /> : null}
       {tab === "look" ? <><LUTSelector /><CustomLUTUpload /></> : null}
+      <div className="sticky bottom-0 rounded-[var(--radius-md)] bg-surface/95 pt-1">
+        <Scopes />
+      </div>
     </div>
   )
 }

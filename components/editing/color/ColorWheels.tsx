@@ -19,7 +19,7 @@ export function ColorWheels() {
   return (
     <section className="rounded-[var(--radius-md)] border border-border-subtle bg-elevated p-3">
       <p className="mb-3 font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-primary">Color Wheels</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(84px,1fr))] gap-3">
         {wheels.map((wheel) => (
           <WheelControl key={wheel.key} label={wheel.label} value={color[wheel.key]} onChange={(value) => updateWheel(wheel.key, value)} />
         ))}

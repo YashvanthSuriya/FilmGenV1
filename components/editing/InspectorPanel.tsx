@@ -37,8 +37,12 @@ export function InspectorPanel() {
         clip ? (
           clip.type === "audio" ? (
             <AudioInspector clip={clip} onUpdate={(patch) => updateClip(clip.id, patch)} />
+          ) : clip.type === "image" ? (
+            <ImageInspector clip={clip} onUpdate={(patch) => updateClip(clip.id, patch)} />
+          ) : clip.type === "video" ? (
+            <VideoInspector clip={clip} onUpdate={(patch) => updateClip(clip.id, patch)} />
           ) : (
-            <VisualInspector clip={clip} onUpdate={(patch) => updateClip(clip.id, patch)} />
+            <OverlayInspector clip={clip} onUpdate={(patch) => updateClip(clip.id, patch)} />
           )
         ) : (
           <div className="p-4 text-sm text-text-muted">Select a clip on the timeline to edit clip properties.</div>
@@ -48,7 +52,28 @@ export function InspectorPanel() {
   )
 }
 
-function VisualInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
+function ImageInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
+  return (
+    <div className="space-y-5 p-4">
+      <ClipSummary clip={clip} />
+      <Field label="Name">
+        <Input value={clip.name} onChange={(event) => onUpdate({ name: event.target.value })} />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <NumberField label="Duration" value={clip.duration} min={0.25} max={600} step={0.25} onChange={(duration) => onUpdate({ duration, outPoint: duration })} />
+        <NumberField label="Opacity" value={clip.opacity} min={0} max={100} onChange={(opacity) => onUpdate({ opacity })} />
+        <NumberField label="Position X" value={clip.position.x} min={-1000} max={1000} onChange={(x) => onUpdate({ position: { ...clip.position, x } })} />
+        <NumberField label="Position Y" value={clip.position.y} min={-1000} max={1000} onChange={(y) => onUpdate({ position: { ...clip.position, y } })} />
+        <NumberField label="Scale" value={clip.scale} min={10} max={400} onChange={(scale) => onUpdate({ scale })} />
+        <NumberField label="Rotation" value={clip.rotation} min={-180} max={180} onChange={(rotation) => onUpdate({ rotation })} />
+      </div>
+      <FitSelect clip={clip} onUpdate={onUpdate} />
+      <VisualToggles clip={clip} onUpdate={onUpdate} />
+    </div>
+  )
+}
+
+function VideoInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
   return (
     <div className="space-y-5 p-4">
       <ClipSummary clip={clip} />
@@ -57,12 +82,37 @@ function VisualInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (pa
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <NumberField label="Speed" value={clip.speed} min={0.25} max={4} step={0.25} onChange={(speed) => onUpdate({ speed })} />
+        <NumberField label="In Point" value={clip.inPoint} min={0} max={clip.outPoint - 0.25} step={0.25} onChange={(inPoint) => onUpdate({ inPoint })} />
+        <NumberField label="Out Point" value={clip.outPoint} min={clip.inPoint + 0.25} max={600} step={0.25} onChange={(outPoint) => onUpdate({ outPoint, duration: Math.max(0.25, (outPoint - clip.inPoint) / clip.speed) })} />
+        <NumberField label="Volume" value={clip.volume} min={0} max={100} onChange={(volume) => onUpdate({ volume })} />
         <NumberField label="Opacity" value={clip.opacity} min={0} max={100} onChange={(opacity) => onUpdate({ opacity })} />
+        <NumberField label="Scale" value={clip.scale} min={10} max={400} onChange={(scale) => onUpdate({ scale })} />
         <NumberField label="Position X" value={clip.position.x} min={-1000} max={1000} onChange={(x) => onUpdate({ position: { ...clip.position, x } })} />
         <NumberField label="Position Y" value={clip.position.y} min={-1000} max={1000} onChange={(y) => onUpdate({ position: { ...clip.position, y } })} />
-        <NumberField label="Scale" value={clip.scale} min={10} max={400} onChange={(scale) => onUpdate({ scale })} />
         <NumberField label="Rotation" value={clip.rotation} min={-180} max={180} onChange={(rotation) => onUpdate({ rotation })} />
       </div>
+      <FitSelect clip={clip} onUpdate={onUpdate} />
+      <VisualToggles clip={clip} onUpdate={onUpdate} />
+    </div>
+  )
+}
+
+function OverlayInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
+  return (
+    <div className="space-y-5 p-4">
+      <ClipSummary clip={clip} />
+      <Field label="Name">
+        <Input value={clip.name} onChange={(event) => onUpdate({ name: event.target.value })} />
+      </Field>
+      <NumberField label="Duration" value={clip.duration} min={0.25} max={600} step={0.25} onChange={(duration) => onUpdate({ duration, outPoint: duration })} />
+      <VisualToggles clip={clip} onUpdate={onUpdate} />
+    </div>
+  )
+}
+
+function FitSelect({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
+  return (
+    <>
       <Field label="Blend Mode">
         <select className="h-10 w-full rounded-[var(--radius-md)] border border-border bg-elevated px-3 text-sm text-text-primary" value={clip.blendMode} onChange={(event) => onUpdate({ blendMode: event.target.value as TimelineClip["blendMode"] })}>
           <option value="normal">Normal</option>
@@ -71,12 +121,25 @@ function VisualInspector({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (pa
           <option value="overlay">Overlay</option>
         </select>
       </Field>
+      <Field label="Fit">
+        <select className="h-10 w-full rounded-[var(--radius-md)] border border-border bg-elevated px-3 text-sm text-text-primary" value={clip.fit} onChange={(event) => onUpdate({ fit: event.target.value as TimelineClip["fit"] })}>
+          <option value="contain">Fit</option>
+          <option value="cover">Fill</option>
+        </select>
+      </Field>
+    </>
+  )
+}
+
+function VisualToggles({ clip, onUpdate }: { clip: TimelineClip; onUpdate: (patch: Partial<TimelineClip>) => void }) {
+  return (
+    <>
       <div className="grid grid-cols-2 gap-2">
         <Toggle label="Flip X" active={clip.flipX} onClick={() => onUpdate({ flipX: !clip.flipX })} />
         <Toggle label="Flip Y" active={clip.flipY} onClick={() => onUpdate({ flipY: !clip.flipY })} />
       </div>
       {clip.type === "overlay" ? <TextOverlayEditor clip={clip} /> : null}
-    </div>
+    </>
   )
 }
 
@@ -120,9 +183,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function NumberField({ label, value, min, max, step = 1, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
+  function commit(rawValue: string) {
+    if (rawValue.trim() === "") return
+    const nextValue = Number(rawValue)
+    if (!Number.isFinite(nextValue)) return
+    onChange(Math.min(max, Math.max(min, nextValue)))
+  }
+
   return (
     <Field label={label}>
-      <Input type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <Input type="number" min={min} max={max} step={step} value={value} onChange={(event) => commit(event.target.value)} />
     </Field>
   )
 }
