@@ -1,44 +1,17 @@
 "use client"
 
-import { Copy, GripVertical, Pencil, Plus, RefreshCw, Send, Trash2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Copy, GripVertical, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
-import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { StoryboardFrame } from "@/lib/types"
 
 const shotTypes = ["Wide", "Medium", "Close-up", "Extreme Close-up", "POV"]
 const movements = ["Static", "Pan", "Tilt", "Zoom", "Dolly", "Handheld"]
 
 export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; index: number }) {
-  const router = useRouter()
   const updateStoryboardFrame = useProjectStore((state) => state.updateStoryboardFrame)
   const duplicateStoryboardFrame = useProjectStore((state) => state.duplicateStoryboardFrame)
   const deleteStoryboardFrame = useProjectStore((state) => state.deleteStoryboardFrame)
-  const addStoryboardAsset = useProjectStore((state) => state.addStoryboardAsset)
-  const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
-  const sendStoryboardFrameToWorkspace = useProjectStore((state) => state.sendStoryboardFrameToWorkspace)
-  const workspaceNodes = useWorkspaceStore((state) => state.nodes)
-  const workspaceEdges = useWorkspaceStore((state) => state.edges)
-  const setWorkspaceNodes = useWorkspaceStore((state) => state.setNodes)
-  const setWorkspaceEdges = useWorkspaceStore((state) => state.setEdges)
-  const selectWorkspaceNode = useWorkspaceStore((state) => state.selectNode)
-
-  function sendToWorkspace() {
-    const result = sendStoryboardFrameToWorkspace(frame.id)
-    if (!result) return
-    setWorkspaceNodes([...workspaceNodes, ...result.nodes])
-    setWorkspaceEdges([...workspaceEdges, ...result.edges])
-    selectWorkspaceNode(result.selectedNodeId)
-    router.push("/studio?tab=workspace")
-  }
-
-  function addToEditing() {
-    const asset = addStoryboardAsset(frame.id)
-    if (!asset) return
-    addAssetToTimeline(asset.id)
-    router.push("/studio?tab=editing")
-  }
 
   return (
     <article className="overflow-hidden rounded-[var(--radius-lg)] border border-border-subtle bg-surface shadow-sm transition hover:border-border-strong hover:shadow-md">
@@ -64,9 +37,6 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
           }}
         />
         <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/55 group-hover:flex">
-          <Button size="icon" variant="secondary" aria-label="Regenerate frame">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
           <Button size="icon" variant="secondary" aria-label="Edit prompt">
             <Pencil className="h-4 w-4" />
           </Button>
@@ -133,16 +103,9 @@ export function StoryboardFrameCard({ frame, index }: { frame: StoryboardFrame; 
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex gap-1">
-          <Button size="sm" variant="ghost" className="text-accent-cyan hover:text-accent-cyan" onClick={addToEditing}>
-            <Plus className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" className="text-accent-amber hover:text-accent-amber" onClick={sendToWorkspace}>
-            <Send className="mr-2 h-4 w-4" />
-            Workspace
-          </Button>
-        </div>
+        <Button size="sm" variant="ghost" className="text-accent-cyan hover:text-accent-cyan" disabled title="Cross-workflow publishing is not connected in the frontend-only demo.">
+          Demo Shot
+        </Button>
       </div>
     </article>
   )

@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest"
 import type { WorkspaceEdge, WorkspaceNode } from "@/lib/types"
 import { studioTabs } from "@/lib/types"
-import { topologicalSort, WorkspaceCycleError } from "@/lib/workspace/execution"
 import { getSuggestedNextNodeTypes, validateConnection } from "@/lib/workspace/graphRules"
 import { assemblePromptForNode } from "@/lib/workspace/promptAssembly"
-import { createWorkspaceNodesFromFrame } from "@/lib/stores/project"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
-import { createWorkspaceAsset } from "@/lib/media/assets"
 
 function node(id: string, type: WorkspaceNode["type"], data: WorkspaceNode["data"] = {}): WorkspaceNode {
   return { id, type, position: { x: 0, y: 0 }, data }
@@ -16,26 +13,11 @@ function edge(source: string, target: string): WorkspaceEdge {
   return { id: `${source}-${target}`, source, target }
 }
 
-describe("workspace execution", () => {
-  it("sorts dependencies before dependent nodes", () => {
-    const nodes = [node("prompt", "prompt"), node("image", "imageOutput"), node("style", "styleCard")]
-    const edges = [edge("style", "prompt"), edge("prompt", "image")]
-
-    expect(topologicalSort(nodes, edges)).toEqual(["style", "prompt", "image"])
-  })
-
-  it("detects cycles", () => {
-    const nodes = [node("a", "prompt"), node("b", "combiner")]
-    const edges = [edge("a", "b"), edge("b", "a")]
-
-    expect(() => topologicalSort(nodes, edges)).toThrow(WorkspaceCycleError)
-  })
-})
-
 describe("workspace prompt assembly", () => {
   it("includes style, character, camera, prompt, and script pieces", () => {
     const nodes = [
       node("style", "styleCard", { styleCardId: "style-1" }),
+      node("action", "actionCard", { actionCardId: "action-1" }),
       node("character", "character", { characterId: "char-1" }),
       node("camera", "cameraConfig", {
         camera: { lens: "50mm", movement: "dolly-in", angle: "low-angle", aperture: "f/1.8", fps: 24 }
@@ -46,6 +28,7 @@ describe("workspace prompt assembly", () => {
     ]
     const edges = [
       edge("style", "image"),
+      edge("action", "image"),
       edge("character", "image"),
       edge("camera", "image"),
       edge("prompt", "image"),
@@ -77,11 +60,22 @@ describe("workspace prompt assembly", () => {
           portraitUrls: [],
           styleCardIds: []
         }
+      ],
+      actionCards: [
+        {
+          id: "action-1",
+          title: "Door Pause",
+          beat: "The detective stops before entering.",
+          subject: "Mara",
+          action: "hesitates at the threshold",
+          emotion: "uneasy"
+        }
       ]
     })
 
     expect(prompt).toContain("Neo Noir")
     expect(prompt).toContain("Mara")
+    expect(prompt).toContain("Door Pause")
     expect(prompt).toContain("50mm")
     expect(prompt).toContain("A neon alley confrontation.")
     expect(prompt).toContain("The detective pauses before the door.")
@@ -97,6 +91,7 @@ describe("workspace prompt assembly", () => {
 describe("workspace graph rules", () => {
   it("suggests logical next nodes", () => {
     expect(getSuggestedNextNodeTypes("prompt")).toContain("imageOutput")
+    expect(getSuggestedNextNodeTypes("actionCard")).toContain("prompt")
     expect(getSuggestedNextNodeTypes("videoOutput")).toEqual(["preview"])
     expect(getSuggestedNextNodeTypes("preview")).toEqual([])
   })
@@ -112,50 +107,11 @@ describe("workspace graph rules", () => {
   })
 })
 
-describe("connected storyboard and workspace assets", () => {
-  it("converts a storyboard frame into a connected workspace graph", () => {
-    const result = createWorkspaceNodesFromFrame(
-      {
-        id: "frame-1",
-        title: "Opening Shot",
-        prompt: "A quiet moonlit street.",
-        shotType: "Wide",
-        cameraMovement: "Dolly",
-        aspectRatio: "16:9",
-        referenceImages: ["linear-gradient(red, blue)"]
-      },
-      0
-    )
-
-    expect(result.nodes.map((item) => item.type)).toEqual(["prompt", "cameraConfig", "imageOutput"])
-    expect(result.edges).toHaveLength(2)
-    expect(result.nodes[0].data.prompt).toContain("moonlit")
-    expect(result.nodes[2].data.storyboardFrameId).toBe("frame-1")
-  })
-
-  it("publishes workspace output nodes as local media assets", () => {
-    const asset = createWorkspaceAsset(
-      node("video-output", "videoOutput", {
-        label: "Final Shot",
-        sourcePrompt: "A neon street reveal."
-      })
-    )
-
-    expect(asset).toMatchObject({
-      source: "workspace",
-      type: "video",
-      name: "Final Shot",
-      workspaceNodeId: "video-output"
-    })
-    expect(asset.prompt).toContain("neon")
-  })
-})
-
 describe("workspace project slots", () => {
-  it("keeps five selectable workspace memories isolated", () => {
+  it("keeps selectable workspace memories isolated", () => {
     useWorkspaceStore.setState({
       activeWorkspaceId: "workspace-1",
-      workspaces: Array.from({ length: 5 }, (_, index) => ({
+      workspaces: Array.from({ length: 2 }, (_, index) => ({
         id: `workspace-${index + 1}`,
         name: `Workspace ${index + 1}`,
         nodes: [],

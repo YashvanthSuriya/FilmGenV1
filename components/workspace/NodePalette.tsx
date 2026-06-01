@@ -1,12 +1,13 @@
 "use client"
 
 import type { LucideIcon } from "lucide-react"
-import { Camera, Combine, Image, MessageSquareText, MonitorPlay, Palette, ScrollText, UserRound, Video } from "lucide-react"
+import { Camera, Combine, Image, MessageSquareText, MonitorPlay, Palette, ScrollText, UserRound, Video, Zap } from "lucide-react"
 import type { WorkspaceNodeType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export const workspaceTools: Array<{ type: WorkspaceNodeType; label: string; icon: LucideIcon }> = [
   { type: "styleCard", label: "Style Card", icon: Palette },
+  { type: "actionCard", label: "Action", icon: Zap },
   { type: "character", label: "Character", icon: UserRound },
   { type: "prompt", label: "Prompt", icon: MessageSquareText },
   { type: "cameraConfig", label: "Camera", icon: Camera },

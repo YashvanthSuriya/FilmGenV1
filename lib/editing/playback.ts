@@ -4,6 +4,21 @@ export function clampPlayhead(position: number, duration: number) {
   return Math.min(Math.max(0, position), Math.max(0, duration))
 }
 
+export function shouldRestartPlayback(position: number, duration: number) {
+  return duration > 0 && position >= duration
+}
+
+export function nextPlaybackPosition(input: {
+  startedAt: number
+  startPosition: number
+  now: number
+  speed: number
+  duration: number
+}) {
+  const elapsedSeconds = Math.max(0, (input.now - input.startedAt) / 1000)
+  return clampPlayhead(input.startPosition + elapsedSeconds * input.speed, input.duration)
+}
+
 export function formatTimecode(seconds: number, fps = TIMELINE_FPS) {
   const safeSeconds = Math.max(0, seconds)
   const totalFrames = Math.round(safeSeconds * fps)

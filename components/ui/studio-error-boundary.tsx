@@ -11,9 +11,7 @@ export class StudioErrorBoundary extends React.Component<{ children: React.React
     return { error }
   }
 
-  resetLocalState() {
-    window.localStorage.removeItem("cine-studio-project")
-    window.localStorage.removeItem("cine-studio-workspace")
+  reloadDemo() {
     window.location.reload()
   }
 
@@ -29,15 +27,15 @@ export class StudioErrorBoundary extends React.Component<{ children: React.React
             </div>
             <div>
               <h1 className="font-heading text-base font-semibold uppercase tracking-[0.08em] text-text-primary">Studio could not load</h1>
-              <p className="mt-1 text-sm text-text-muted">Local project data may be out of date. Reset local editor state to recover this browser.</p>
+              <p className="mt-1 text-sm text-text-muted">Reload the frontend demo to return to the curated session state.</p>
             </div>
           </div>
           <pre className="mt-4 max-h-32 overflow-auto rounded border border-border-subtle bg-background p-3 text-xs text-text-muted">
             {this.state.error.message}
           </pre>
-          <Button className="mt-4 w-full" variant="primary" onClick={() => this.resetLocalState()}>
+          <Button className="mt-4 w-full" variant="primary" onClick={() => this.reloadDemo()}>
             <RefreshCcw className="h-4 w-4" />
-            Reset Local State
+            Reload Demo
           </Button>
         </section>
       </main>

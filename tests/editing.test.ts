@@ -114,8 +114,8 @@ describe("Phase 4 editing timeline", () => {
     const first = createTimelineClip({ id: "a", trackId: "track-video-v1", type: "video", name: "A", start: 0, duration: 4 })
     const second = createTimelineClip({ id: "b", trackId: "track-video-v1", type: "video", name: "B", start: 8, duration: 3 })
 
-    expect(resolveClipStart([first, second], "new", "track-video-v1", 2, 2)).toBe(4.25)
-    expect(moveClip([first, second], createDefaultTracks(), second.id, "track-video-v1", 1)[1].start).toBe(4.25)
+    expect(resolveClipStart([first, second], "new", "track-video-v1", 2, 2)).toBe(4)
+    expect(moveClip([first, second], createDefaultTracks(), second.id, "track-video-v1", 1)[1].start).toBe(4)
   })
 
   it("extends image clips by trimming the end while preventing same-track overlap", () => {
@@ -126,7 +126,7 @@ describe("Phase 4 editing timeline", () => {
     expect(extended).toMatchObject({ duration: 7, outPoint: 7 })
 
     const clamped = trimClip([image, next], image.id, "end", 10).find((clip) => clip.id === image.id)
-    expect(clamped?.duration).toBe(7.75)
+    expect(clamped?.duration).toBe(8)
   })
 
   it("formats and parses 24fps timecode", () => {
@@ -291,6 +291,7 @@ describe("Editor repair regressions", () => {
     useProjectStore.setState((state) => ({ editingState: { ...state.editingState, clips: [clip], selectedClipId: clip.id } }))
     render(React.createElement(EditingLayout))
 
+    fireEvent.click(screen.getByRole("button", { name: /inspector/i }))
     const nameInput = screen.getByLabelText("Name")
     nameInput.focus()
     fireEvent.keyDown(nameInput, { key: "Delete" })

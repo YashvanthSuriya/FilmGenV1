@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useProjectStore } from "@/lib/stores/project"
 import { formatTimecode, shouldRestartPlayback } from "@/lib/editing/playback"
 import { computeGradeOverlay, computePreviewFilter } from "@/lib/editing/colorGrade"
+import { createObjectUrlForBlobKey } from "@/lib/media/indexedDb"
 
 export function PreviewPlayer({ duration }: { duration: number }) {
   const previewRef = useRef<HTMLDivElement>(null)
@@ -17,10 +18,14 @@ export function PreviewPlayer({ duration }: { duration: number }) {
   const assets = useProjectStore((state) => state.assets)
   const selectedClipId = useProjectStore((state) => state.editingState.selectedClipId)
   const playing = useProjectStore((state) => state.editingState.playbackState === "playing")
+  const muted = useProjectStore((state) => state.editingState.muted)
+  const previewVolume = useProjectStore((state) => state.editingState.previewVolume)
+  const timelineVolume = useProjectStore((state) => state.editingState.volume)
   const colorGrading = useProjectStore((state) => state.editingState.colorGrading)
   const textOverlay = useProjectStore((state) => state.editingState.textOverlays.clips.find((clip) => clip.clipId === state.editingState.selectedClipId))
   const setPlaybackState = useProjectStore((state) => state.setPlaybackState)
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
+  const [resolvedBlobUrl, setResolvedBlobUrl] = useState<string | undefined>()
 
   const activeClip = useMemo(() => {
     const atPlayhead = clips
@@ -40,14 +45,34 @@ export function PreviewPlayer({ duration }: { duration: number }) {
     if (!video || !activeClip || activeClip.type !== "video") return
     if (Math.abs(video.currentTime - localTime) > 0.35) video.currentTime = localTime
     video.playbackRate = activeClip.speed
+    video.muted = muted
+    video.volume = Math.min(1, Math.max(0, (previewVolume / 100) * (timelineVolume / 100) * (activeClip.volume / 100)))
     if (playing && activeClip.type === "video") {
       void video.play().catch(() => undefined)
     } else {
       video.pause()
     }
-  }, [activeClip, localTime, playing])
+  }, [activeClip, localTime, muted, playing, previewVolume, timelineVolume])
 
-  const resolvedUrl = activeClip?.url ?? assets.find((item) => item.id === activeClip?.assetId)?.url
+  const activeAsset = assets.find((item) => item.id === activeClip?.assetId)
+  const resolvedUrl = activeClip?.url ?? activeAsset?.url ?? resolvedBlobUrl
+
+  useEffect(() => {
+    let objectUrl: string | undefined
+    let cancelled = false
+    if (!activeAsset?.blobKey || activeAsset.url) {
+      setResolvedBlobUrl(undefined)
+      return undefined
+    }
+    void createObjectUrlForBlobKey(activeAsset.blobKey).then((url) => {
+      objectUrl = url
+      if (!cancelled) setResolvedBlobUrl(url)
+    }).catch(() => undefined)
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [activeAsset])
 
   function seek(event: React.PointerEvent<HTMLDivElement>) {
     if (duration <= 0) return
@@ -90,7 +115,7 @@ export function PreviewPlayer({ duration }: { duration: number }) {
     >
       <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_center,rgba(0,229,255,0.1),transparent_34%),#020202]">
         {resolvedUrl && activeClip?.type === "video" ? (
-          <video ref={videoRef} key={resolvedUrl} className="h-full w-full" src={resolvedUrl} muted playsInline style={{ objectFit: activeClip.fit, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} onPointerDown={(event) => event.stopPropagation()} />
+          <video ref={videoRef} key={resolvedUrl} className="h-full w-full" src={resolvedUrl} muted={muted} playsInline style={{ objectFit: activeClip.fit, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : resolvedUrl && activeClip?.type === "image" && resolvedUrl.startsWith("linear-gradient") ? (
           <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: resolvedUrl, filter: mediaFilter, opacity: activeClip.opacity / 100, transform: `translate(${activeClip.position.x}px, ${activeClip.position.y}px) scale(${activeClip.scale / 100}) rotate(${activeClip.rotation}deg) scaleX(${activeClip.flipX ? -1 : 1}) scaleY(${activeClip.flipY ? -1 : 1})` }} />
         ) : resolvedUrl && activeClip?.type === "image" ? (

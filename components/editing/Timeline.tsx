@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Maximize2, Minus, Plus } from "lucide-react"
 import { TrackHeader } from "@/components/editing/TrackHeader"
 import { ClipBlock } from "@/components/editing/ClipBlock"
@@ -17,6 +17,7 @@ const TRACK_HEIGHT = 72
 export function Timeline({ duration }: { duration: number }) {
   const [dragState, setDragState] = useState<{ trackId: string; compatible: boolean; hint: string } | null>(null)
   const [dropStatus, setDropStatus] = useState<string | null>(null)
+  const timelineBodyRef = useRef<HTMLDivElement | null>(null)
   const editing = useProjectStore((state) => state.editingState)
   const assets = useProjectStore((state) => state.assets)
   const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
@@ -30,6 +31,27 @@ export function Timeline({ duration }: { duration: number }) {
     const rect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - rect.left
     setPlayheadPosition(clampPlayhead(x / (SECOND_WIDTH * editing.timelineZoom), duration))
+  }
+
+  function seekFromTimelineX(clientX: number) {
+    const rect = timelineBodyRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setPlayheadPosition(clampPlayhead((clientX - rect.left) / (SECOND_WIDTH * editing.timelineZoom), duration))
+  }
+
+  function beginPlayheadDrag(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    seekFromTimelineX(event.clientX)
+    function move(pointerEvent: PointerEvent) {
+      seekFromTimelineX(pointerEvent.clientX)
+    }
+    function stop() {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", stop)
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", stop)
   }
 
   function fitTimeline() {
@@ -114,17 +136,21 @@ export function Timeline({ duration }: { duration: number }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="relative h-10 border-b border-border-subtle bg-surface" style={{ width: timelineWidth }} onPointerDown={seekFromEvent}>
+          <div ref={timelineBodyRef} className="relative h-10 border-b border-border-subtle bg-surface" style={{ width: timelineWidth }} onPointerDown={seekFromEvent}>
             {Array.from({ length: Math.ceil(displayDuration) + 1 }).map((_, second) => (
               <div key={second} className="absolute top-0 h-full border-l border-border-subtle px-1 pt-1 font-body text-[10px] text-text-muted" style={{ left: second * SECOND_WIDTH * editing.timelineZoom }}>
                 {second % 5 === 0 ? formatTimecode(second).slice(3) : ""}
               </div>
             ))}
-            <div className="absolute top-0 z-20 h-full w-0.5 bg-accent-red" style={{ left: editing.playheadPosition * SECOND_WIDTH * editing.timelineZoom }} />
+            <div className="absolute top-0 z-20 h-full w-2 -translate-x-1 cursor-ew-resize" style={{ left: editing.playheadPosition * SECOND_WIDTH * editing.timelineZoom }} onPointerDown={beginPlayheadDrag}>
+              <div className="mx-auto h-full w-0.5 bg-accent-red" />
+            </div>
           </div>
 
           <div className="relative" style={{ width: timelineWidth }}>
-            <div className="pointer-events-none absolute inset-y-0 z-20 w-0.5 bg-accent-red" style={{ left: editing.playheadPosition * SECOND_WIDTH * editing.timelineZoom }} />
+            <div className="absolute inset-y-0 z-20 w-3 -translate-x-1.5 cursor-ew-resize" style={{ left: editing.playheadPosition * SECOND_WIDTH * editing.timelineZoom }} onPointerDown={beginPlayheadDrag}>
+              <div className="mx-auto h-full w-0.5 bg-accent-red" />
+            </div>
             {orderedTracks.map((track) => {
               const trackClips = editing.clips.filter((clip) => clip.trackId === track.id)
               const trackHeight = track.expanded ? TRACK_HEIGHT : 40
@@ -154,6 +180,10 @@ export function Timeline({ duration }: { duration: number }) {
                     }
                   }}
                   onDrop={(event) => handleTimelineDrop(track, event)}
+                  onPointerDown={(event) => {
+                    if ((event.target as HTMLElement).closest("[data-clip-block='true'], button, input, textarea, select")) return
+                    seekFromTimelineX(event.clientX)
+                  }}
                 >
                   {dragState?.trackId === track.id ? (
                     <div className={`pointer-events-none absolute inset-1 z-10 grid place-items-center rounded border text-[10px] uppercase tracking-[0.08em] ${dragState.compatible ? "border-accent-cyan bg-accent-cyan-dim text-accent-cyan" : "border-accent-red bg-accent-red/10 text-accent-red"}`}>

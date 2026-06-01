@@ -16,11 +16,11 @@ import {
   type EdgeMouseHandler,
   type NodeChange
 } from "@xyflow/react"
-import { Check, Copy, Crosshair, Eraser, Link2Off, MousePointer2, Pin, Send, Trash2, type LucideIcon } from "lucide-react"
+import { Camera, Check, Clapperboard, Copy, Crosshair, Eraser, Film, Heart, Image, Link2Off, MousePointer2, Pin, Plus, Sparkles, Trash2, Video, type LucideIcon } from "lucide-react"
 import { CustomEdge } from "@/components/workspace/CustomEdge"
 import { NodePalette, workspaceTools } from "@/components/workspace/NodePalette"
 import { PropertiesPanel } from "@/components/workspace/PropertiesPanel"
-import { RunAllButton } from "@/components/workspace/RunAllButton"
+import { ActionCardNode } from "@/components/workspace/nodes/ActionCardNode"
 import { CameraConfigNode } from "@/components/workspace/nodes/CameraConfigNode"
 import { CharacterNode } from "@/components/workspace/nodes/CharacterNode"
 import { CombinerNode } from "@/components/workspace/nodes/CombinerNode"
@@ -32,11 +32,12 @@ import { StyleCardNode } from "@/components/workspace/nodes/StyleCardNode"
 import { VideoOutputNode } from "@/components/workspace/nodes/VideoOutputNode"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import { useProjectStore } from "@/lib/stores/project"
-import type { WorkspaceEdge, WorkspaceNode, WorkspaceNodeType } from "@/lib/types"
+import type { AmateurWorkflowState, WorkspaceEdge, WorkspaceNode, WorkspaceNodeType } from "@/lib/types"
 import { getSuggestedNextNodeTypes, validateConnection } from "@/lib/workspace/graphRules"
 
 const nodeTypes = {
   styleCard: StyleCardNode,
+  actionCard: ActionCardNode,
   character: CharacterNode,
   prompt: PromptNode,
   cameraConfig: CameraConfigNode,
@@ -83,6 +84,8 @@ function WorkspaceCanvasInner() {
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const saved = useWorkspaceStore((state) => state.saved)
   const lastAutosavedAt = useWorkspaceStore((state) => state.lastAutosavedAt)
+  const workspaceMode = useWorkspaceStore((state) => state.workspaceMode)
+  const setWorkspaceMode = useProjectStore((state) => state.setWorkspaceMode)
   const setNodes = useWorkspaceStore((state) => state.setNodes)
   const setEdges = useWorkspaceStore((state) => state.setEdges)
   const addNode = useWorkspaceStore((state) => state.addNode)
@@ -93,14 +96,14 @@ function WorkspaceCanvasInner() {
   const setViewport = useWorkspaceStore((state) => state.setViewport)
   const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace)
   const clearWorkspace = useWorkspaceStore((state) => state.clearWorkspace)
+  const setAmateurWorkflow = useWorkspaceStore((state) => state.setAmateurWorkflow)
   const [menu, setMenu] = useState<ContextMenuState>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [hideSuggestionsForNode, setHideSuggestionsForNode] = useState<string | null>(null)
   const [expandedSuggestionsForNode, setExpandedSuggestionsForNode] = useState<string | null>(null)
-  const publishWorkspaceAsset = useProjectStore((state) => state.publishWorkspaceAsset)
-
   const lastSavedLabel = useMemo(() => {
-    if (!lastAutosavedAt) return "Not autosaved yet"
+    if (!lastAutosavedAt) return "Session edits are not persisted"
+    if (lastAutosavedAt === "Session only") return lastAutosavedAt
     return new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastAutosavedAt))
   }, [lastAutosavedAt])
 
@@ -196,10 +199,8 @@ function WorkspaceCanvasInner() {
     setMenu(null)
   }
 
-  function publishNode(nodeId: string) {
-    const node = nodes.find((item) => item.id === nodeId)
-    if (node) publishWorkspaceAsset(node)
-    setMenu(null)
+  if (workspaceMode === "amateur") {
+    return <AmateurWorkspace onModeChange={setWorkspaceMode} onAmateurChange={setAmateurWorkflow} />
   }
 
   return (
@@ -207,7 +208,7 @@ function WorkspaceCanvasInner() {
       <NodePalette onAddNode={(type) => createNode(type)} />
       <main className="relative min-w-0 flex-1">
         <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-2 shadow-md">
-          <RunAllButton />
+          <WorkspaceModeSwitch mode="director" onChange={setWorkspaceMode} />
           <button type="button" onClick={() => fitView({ padding: 0.2 })} className="grid h-9 w-9 place-items-center rounded text-text-secondary hover:bg-elevated hover:text-accent-cyan" aria-label="Fit view">
             <Crosshair className="h-4 w-4" />
           </button>
@@ -288,9 +289,128 @@ function WorkspaceCanvasInner() {
           onAdd={createConnectedNode}
         />
         <StatusBar nodeCount={nodes.length} edgeCount={edges.length} saved={saved} lastSaved={lastSavedLabel} />
-        <ContextMenu menu={menu} nodes={nodes} onAddNode={createNode} onFitView={() => fitView({ padding: 0.2 })} onSelectAll={selectAll} onDuplicate={duplicateSelected} onDelete={deleteSelected} onPin={pinNode} onPublish={publishNode} onDisconnect={disconnectEdge} />
+        <ContextMenu menu={menu} onAddNode={createNode} onFitView={() => fitView({ padding: 0.2 })} onSelectAll={selectAll} onDuplicate={duplicateSelected} onDelete={deleteSelected} onPin={pinNode} onDisconnect={disconnectEdge} />
         <PropertiesPanel />
       </main>
+    </div>
+  )
+}
+
+function AmateurWorkspace({ onModeChange, onAmateurChange }: { onModeChange: (mode: "amateur" | "director") => void; onAmateurChange: (patch: Partial<AmateurWorkflowState>) => void }) {
+  const styleCards = useProjectStore((state) => state.styleCards)
+  const actionCards = useProjectStore((state) => state.actionCards)
+  const cameraConfig = useProjectStore((state) => state.cameraConfig)
+  const addMediaClipToTimeline = useProjectStore((state) => state.addMediaClipToTimeline)
+  const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
+  const activeWorkspace = useWorkspaceStore((state) => state.workspaces.find((workspace) => workspace.id === activeWorkspaceId))
+  const amateur = activeWorkspace?.amateur
+  const styleCardId = amateur?.styleCardId ?? styleCards[0]?.id ?? ""
+  const actionCardId = amateur?.actionCardId ?? actionCards[0]?.id ?? ""
+  const prompt = amateur?.prompt ?? ""
+  const outputType = amateur?.outputType ?? "video"
+  const selectedStyle = styleCards.find((style) => style.id === styleCardId)
+  const selectedAction = actionCards.find((action) => action.id === actionCardId)
+  const previewPrompt = [
+    selectedStyle ? `Style: ${selectedStyle.name}. ${selectedStyle.description}` : "",
+    selectedAction ? `Action: ${selectedAction.beat}` : "",
+    `Camera: ${cameraConfig.lens}, ${cameraConfig.movement}, ${cameraConfig.angle}`,
+    `Prompt: ${prompt}`
+  ].filter(Boolean).join("\n")
+
+  return (
+    <main className="relative min-h-[calc(100vh-var(--nav-height))] overflow-hidden bg-[#05090b] text-text-primary">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(0,229,255,0.18),transparent_34%),radial-gradient(circle_at_42%_44%,rgba(71,111,255,0.2),transparent_28%),linear-gradient(180deg,rgba(4,16,20,0.9),rgba(5,7,9,1))]" />
+      <div className="absolute left-4 top-4 z-20">
+        <WorkspaceModeSwitch mode="amateur" onChange={onModeChange} />
+      </div>
+      <div className="absolute left-5 top-24 z-20 flex flex-col gap-5">
+        {[MousePointer2, Plus, Image, Clapperboard].map((Icon, index) => (
+          <button key={index} type="button" className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] border border-border-subtle bg-surface/70 text-text-secondary backdrop-blur hover:border-accent-cyan hover:text-accent-cyan" aria-label="Workspace tool">
+            <Icon className="h-4 w-4" />
+          </button>
+        ))}
+      </div>
+      <div className="relative z-10 flex min-h-[calc(100vh-var(--nav-height))] flex-col items-center justify-between px-6 py-8">
+        <div className="flex w-full items-center justify-between">
+          <div className="flex gap-2">
+            <select value={styleCardId} onChange={(event) => onAmateurChange({ styleCardId: event.target.value, camera: cameraConfig, outputType, prompt })} className="h-9 rounded-[var(--radius-md)] border border-border-subtle bg-surface/80 px-3 text-sm text-text-primary outline-none">
+              {styleCards.length === 0 ? <option value="">Style Auto</option> : styleCards.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
+            </select>
+            <button type="button" className="flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/80 px-3 text-sm text-text-secondary">
+              <Heart className="h-4 w-4" />
+              Liked
+            </button>
+          </div>
+          <select value={actionCardId} onChange={(event) => onAmateurChange({ actionCardId: event.target.value, camera: cameraConfig, outputType, prompt })} className="h-9 max-w-48 rounded-[var(--radius-md)] border border-border-subtle bg-surface/80 px-3 text-sm text-text-primary outline-none">
+            {actionCards.length === 0 ? <option value="">Action Auto</option> : actionCards.map((action) => <option key={action.id} value={action.id}>{action.title}</option>)}
+          </select>
+        </div>
+        <section className="mb-28 max-w-3xl text-center">
+          <p className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-muted">Cinema Studio 3.5</p>
+          <h1 className="mt-6 font-heading text-4xl font-bold leading-tight text-transparent md:text-5xl" style={{ backgroundImage: "linear-gradient(90deg,#4d7dff,#67e8f9)", WebkitBackgroundClip: "text" }}>
+            What would you shoot with infinite budget?
+          </h1>
+          <div className="mt-8 flex flex-wrap justify-center gap-2">
+            <PromptChip icon={Sparkles} label={`Genre: ${selectedStyle?.mood?.split("/")[0]?.trim() ?? "General"}`} />
+            <PromptChip icon={Film} label={`Style: ${selectedStyle?.name ?? "Auto"}`} />
+            <PromptChip icon={Camera} label={`Camera: ${cameraConfig.lens}`} />
+          </div>
+        </section>
+        <section className="w-full max-w-5xl">
+          <div className="mx-auto grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+            <div className="grid overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-surface/80 p-1">
+              {(["image", "video"] as const).map((type) => {
+                const Icon = type === "image" ? Image : Video
+                return (
+                  <button key={type} type="button" onClick={() => onAmateurChange({ outputType: type, camera: cameraConfig, prompt })} className={`flex flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] py-3 text-[10px] font-semibold uppercase ${outputType === type ? "bg-elevated text-text-primary" : "text-text-secondary hover:text-accent-cyan"}`}>
+                    <Icon className="h-4 w-4" />
+                    {type}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface/90 p-4 shadow-lg shadow-black/30">
+              <textarea value={prompt} onChange={(event) => onAmateurChange({ prompt: event.target.value, camera: cameraConfig, outputType })} placeholder="Describe your scene - use @ to add characters & locations" className="min-h-24 w-full resize-none bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted" />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <PromptChip icon={Sparkles} label="Cinema Studio 3.5" />
+                  <PromptChip icon={Film} label="8s" />
+                  <PromptChip icon={Camera} label="1080p" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addMediaClipToTimeline({ id: `amateur-${Date.now()}`, type: outputType, name: `Amateur ${outputType}`, duration: outputType === "image" ? 5 : 8, url: outputType === "image" ? "linear-gradient(135deg, rgba(0,229,255,0.2), rgba(255,184,0,0.12))" : undefined })}
+                  className="h-12 rounded-[var(--radius-md)] bg-accent-cyan px-5 font-heading text-xs font-bold uppercase tracking-[0.08em] text-black shadow-cyan"
+                >
+                  Prepare <Sparkles className="ml-1 inline h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <textarea readOnly value={previewPrompt} className="sr-only" aria-label="Assembled amateur prompt" />
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function PromptChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-2 rounded-full border border-border-subtle bg-surface/80 px-3 text-xs text-text-secondary backdrop-blur">
+      <Icon className="h-3.5 w-3.5 text-accent-cyan" />
+      {label}
+    </span>
+  )
+}
+
+function WorkspaceModeSwitch({ mode, onChange }: { mode: "amateur" | "director"; onChange: (mode: "amateur" | "director") => void }) {
+  return (
+    <div className="flex rounded-full border border-border-subtle bg-background/80 p-1 shadow-md backdrop-blur">
+      {(["amateur", "director"] as const).map((item) => (
+        <button key={item} type="button" onClick={() => onChange(item)} className={`h-8 rounded-full px-3 font-heading text-[10px] font-semibold uppercase tracking-[0.08em] ${mode === item ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:text-text-primary"}`}>
+          {item}
+        </button>
+      ))}
     </div>
   )
 }
@@ -379,37 +499,31 @@ function StatusBar({ nodeCount, edgeCount, saved, lastSaved }: { nodeCount: numb
         <Check className="h-4 w-4" />
         {saved ? "Saved" : "Saving"}
       </span>
-      <span>Last autosaved {lastSaved}</span>
+      <span>{lastSaved}</span>
     </div>
   )
 }
 
 function ContextMenu({
   menu,
-  nodes,
   onAddNode,
   onFitView,
   onSelectAll,
   onDuplicate,
   onDelete,
   onPin,
-  onPublish,
   onDisconnect
 }: {
   menu: ContextMenuState
-  nodes: WorkspaceNode[]
   onAddNode: (type: WorkspaceNodeType, x?: number, y?: number) => void
   onFitView: () => void
   onSelectAll: () => void
   onDuplicate: (nodeId: string) => void
   onDelete: (nodeId: string) => void
   onPin: (nodeId: string) => void
-  onPublish: (nodeId: string) => void
   onDisconnect: (edgeId: string) => void
 }) {
   if (!menu) return null
-  const menuNode = menu.kind === "node" ? nodes.find((node) => node.id === menu.nodeId) : undefined
-  const canPublish = menuNode?.type === "imageOutput" || menuNode?.type === "videoOutput"
 
   return (
     <div className="fixed z-50 min-w-52 rounded-[var(--radius-md)] border border-border bg-overlay p-1 text-sm text-text-secondary shadow-lg" style={{ left: menu.x, top: menu.y }}>
@@ -430,7 +544,6 @@ function ContextMenu({
         </>
       ) : menu.kind === "node" ? (
         <>
-          {canPublish ? <MenuButton icon={Send} label="Send to Editing" onClick={() => onPublish(menu.nodeId)} /> : null}
           <MenuButton icon={Copy} label="Duplicate" onClick={() => onDuplicate(menu.nodeId)} />
           <MenuButton icon={Trash2} label="Delete" onClick={() => onDelete(menu.nodeId)} />
           <MenuButton icon={Pin} label="Pin" onClick={() => onPin(menu.nodeId)} />

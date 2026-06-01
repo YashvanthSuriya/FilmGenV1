@@ -1,42 +1,16 @@
 "use client"
 
 import type { NodeProps } from "@xyflow/react"
-import { Send, Video } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useProjectStore } from "@/lib/stores/project"
+import { Video } from "lucide-react"
 import type { WorkspaceNode } from "@/lib/types"
 import { BaseNode } from "./BaseNode"
 
 export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
-  const publishWorkspaceAsset = useProjectStore((state) => state.publishWorkspaceAsset)
-  const publish = () => publishWorkspaceAsset({ id, type: "videoOutput", position: { x: 0, y: 0 }, data })
-
   return (
-    <BaseNode id={id} icon={Video} label="Video Output" selected={selected} status={data.status} footer={<span>Local</span>}>
+    <BaseNode id={id} icon={Video} label="Video Output" selected={selected} status={data.status} footer={<span>Demo</span>}>
       <div className="grid aspect-video place-items-center rounded border border-dashed border-border bg-background text-xs text-text-muted">
-        {data.output ?? "Video render placeholder"}
+        {data.output ?? "Static video output preview"}
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="nodrag nopan w-full"
-        onMouseDown={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-        onPointerUp={(event) => {
-          event.stopPropagation()
-          publish()
-        }}
-        onClick={(event) => {
-          event.stopPropagation()
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") publish()
-        }}
-      >
-        <Send className="h-4 w-4" />
-        Send to Editing
-      </Button>
     </BaseNode>
   )
 }

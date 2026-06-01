@@ -1,10 +1,11 @@
-import type { CameraConfig, Character, StyleCard, WorkspaceEdge, WorkspaceNode } from "@/lib/types"
+import type { ActionCard, CameraConfig, Character, StyleCard, WorkspaceEdge, WorkspaceNode } from "@/lib/types"
 
 export interface PromptAssemblyContext {
   nodes: WorkspaceNode[]
   edges: WorkspaceEdge[]
   styleCards: StyleCard[]
   characters: Character[]
+  actionCards?: ActionCard[]
 }
 
 function upstreamIds(nodeId: string, edges: WorkspaceEdge[]) {
@@ -41,6 +42,11 @@ export function assemblePromptForNode(nodeId: string, context: PromptAssemblyCon
     if (node.type === "character" && node.data.characterId) {
       const character = context.characters.find((item) => item.id === node.data.characterId)
       if (character) parts.push(`Character: ${character.name}, ${character.role}. ${character.description}.`)
+    }
+
+    if (node.type === "actionCard" && node.data.actionCardId) {
+      const action = context.actionCards?.find((item) => item.id === node.data.actionCardId)
+      if (action) parts.push(`Action: ${action.title}. Beat: ${action.beat}. Subject: ${action.subject}. Action: ${action.action}. Emotion: ${action.emotion}.`)
     }
 
     if (node.type === "cameraConfig" && node.data.camera) {

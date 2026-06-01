@@ -1,14 +1,13 @@
 "use client"
 
-import { Plus, Search, Volume2 } from "lucide-react"
+import { Search, Volume2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useProjectStore } from "@/lib/stores/project"
 import type { SfxCategory, SfxItem } from "@/lib/types"
 
 const categories: SfxCategory[] = ["Ambient", "Foley", "Music", "Transitions", "Nature", "UI", "Weather", "Urban", "Interior", "Sci-Fi"]
-const mockSfx: SfxItem[] = [
+const demoSfx: SfxItem[] = [
   { id: "rain-window", name: "Rain on window", category: "Weather", duration: 8 },
   { id: "city-night", name: "City night bed", category: "Urban", duration: 12 },
   { id: "cloth-step", name: "Soft cloth step", category: "Foley", duration: 2 },
@@ -22,10 +21,9 @@ const mockSfx: SfxItem[] = [
 export function SFXLibrary() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<SfxCategory>("Ambient")
-  const addSfx = useProjectStore((state) => state.addMockSfxToTimeline)
   const results = useMemo(() => {
     const text = query.toLowerCase()
-    return mockSfx.filter((item) => (category === "Ambient" || item.category === category) && item.name.toLowerCase().includes(text))
+    return demoSfx.filter((item) => (category === "Ambient" || item.category === category) && item.name.toLowerCase().includes(text))
   }, [category, query])
 
   return (
@@ -44,7 +42,7 @@ export function SFXLibrary() {
       </div>
       <div className="mt-3 space-y-2">
         {results.map((item) => (
-          <div key={item.id} draggable onDragStart={(event) => event.dataTransfer.setData("application/x-cine-sfx", JSON.stringify(item))} className="flex items-center gap-2 rounded border border-border-subtle bg-background p-2">
+          <div key={item.id} className="flex items-center gap-2 rounded border border-border-subtle bg-background p-2">
             <Button size="icon" variant="ghost" aria-label={`Preview ${item.name}`}>
               <Volume2 className="h-4 w-4 text-accent-amber" />
             </Button>
@@ -52,8 +50,8 @@ export function SFXLibrary() {
               <p className="truncate text-sm text-text-primary">{item.name}</p>
               <p className="text-xs text-text-muted">{item.category} / {item.duration}s</p>
             </div>
-            <Button size="icon" variant="ghost" aria-label={`Add ${item.name} to timeline`} onClick={() => addSfx(item)}>
-              <Plus className="h-4 w-4 text-accent-cyan" />
+            <Button size="icon" variant="ghost" aria-label={`${item.name} is static demo content`} disabled>
+              <Volume2 className="h-4 w-4 text-text-muted" />
             </Button>
           </div>
         ))}

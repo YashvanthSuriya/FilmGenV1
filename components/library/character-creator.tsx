@@ -16,7 +16,6 @@ const emotions = ["Neutral", "Happy", "Angry", "Fearful"]
 export function CharacterCreator({ open, onClose }: { open: boolean; onClose: () => void }) {
   const styleCards = useProjectStore((state) => state.styleCards)
   const addCharacter = useProjectStore((state) => state.addCharacter)
-  const spendCredits = useProjectStore((state) => state.spendCredits)
   const [name, setName] = useState("")
   const [role, setRole] = useState("Hero")
   const [description, setDescription] = useState("")
@@ -44,11 +43,6 @@ export function CharacterCreator({ open, onClose }: { open: boolean; onClose: ()
       setError("Add a character name first.")
       return
     }
-    if (!spendCredits(4, `Character portraits: ${name}`)) {
-      setError("Not enough credits for character generation.")
-      return
-    }
-
     const character: Character = {
       id: `character-${Date.now()}`,
       name,
@@ -80,7 +74,7 @@ export function CharacterCreator({ open, onClose }: { open: boolean; onClose: ()
           <Card className="grid min-h-40 place-items-center border-dashed bg-background p-6 text-center">
             <UserPlus className="mb-3 h-8 w-8 text-accent-cyan" />
             <p className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Add portrait reference</p>
-            <p className="mt-1 text-sm text-text-muted">Portrait images, face sheets, or concept stills</p>
+            <p className="mt-1 text-sm text-text-muted">Static portrait swatches keep the demo visual without generation</p>
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -137,7 +131,7 @@ export function CharacterCreator({ open, onClose }: { open: boolean; onClose: ()
 
           {error ? <p className="text-sm text-accent-red">{error}</p> : null}
           <Button className="w-full bg-accent-cyan text-black hover:brightness-110" onClick={createCharacter}>
-            SAVE CHARACTER (4 CREDITS)
+            SAVE DEMO CHARACTER
           </Button>
         </section>
 

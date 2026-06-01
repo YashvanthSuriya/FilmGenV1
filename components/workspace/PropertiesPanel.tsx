@@ -66,7 +66,7 @@ export function PropertiesPanel() {
               <textarea
                 value={selectedNode.data.output ?? ""}
                 onChange={(event) => updateNode(selectedNode.id, { output: event.target.value })}
-                placeholder="Local output placeholder"
+                placeholder="Static demo output notes"
                 className="min-h-28 w-full resize-none rounded-[var(--radius-md)] border border-border bg-elevated p-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
             </div>

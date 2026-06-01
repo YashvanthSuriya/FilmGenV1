@@ -20,7 +20,7 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
   const deleteClip = useProjectStore((state) => state.deleteTimelineClip)
   const applyTransition = useProjectStore((state) => state.applyTimelineTransition)
   const clips = useProjectStore((state) => state.editingState.clips)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; splitAt: number } | null>(null)
   const waveformRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -125,13 +125,16 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
   return (
     <>
       <div
+        data-clip-block="true"
         className={`absolute top-2 h-14 cursor-grab select-none overflow-hidden rounded-[var(--radius-md)] border border-l-4 px-3 py-2 text-left shadow-sm transition active:cursor-grabbing ${clipClass} ${selected ? "ring-2 ring-accent-cyan" : ""}`}
         style={{ left, width: Math.max(44, width) }}
         onPointerDown={beginMove}
         onContextMenu={(event) => {
           event.preventDefault()
           selectClip(clip.id)
-          setMenu({ x: event.clientX, y: event.clientY })
+          const rect = event.currentTarget.getBoundingClientRect()
+          const splitAt = clip.start + ((event.clientX - rect.left) / Math.max(1, rect.width)) * clip.duration
+          setMenu({ x: event.clientX, y: event.clientY, splitAt })
         }}
       >
         <button data-trim="start" type="button" aria-label="Trim clip start" onPointerDown={(event) => beginTrim("start", event)} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-transparent hover:bg-accent-cyan/20" />
@@ -152,7 +155,7 @@ export function ClipBlock({ clip, left, width, zoom }: { clip: TimelineClip; lef
       </div>
       {menu ? (
         <div data-clip-menu className="fixed z-50 w-56 rounded-[var(--radius-md)] border border-border bg-overlay p-1 text-sm text-text-secondary shadow-lg" style={{ left: menu.x, top: menu.y }}>
-          <MenuItem icon={Scissors} label="Split" onClick={() => { splitClip(clip.id, clip.start + clip.duration / 2); setMenu(null) }} />
+          <MenuItem icon={Scissors} label="Split Here" onClick={() => { splitClip(clip.id, menu.splitAt); setMenu(null) }} />
           <MenuItem icon={Copy} label="Duplicate" onClick={() => { duplicateClip(clip.id); setMenu(null) }} />
           <MenuItem icon={Trash2} label="Delete" onClick={() => { deleteClip(clip.id); setMenu(null) }} />
           <MenuItem icon={Unlink} label="Detach Audio" onClick={() => setMenu(null)} />

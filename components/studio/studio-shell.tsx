@@ -8,7 +8,6 @@ import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas"
 import { EditingLayout } from "@/components/editing/EditingLayout"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { PlanLockOverlay } from "@/components/ui/plan-lock-overlay"
 import { StudioErrorBoundary } from "@/components/ui/studio-error-boundary"
 import { studioTabs, type StudioTab } from "@/lib/types"
 import { useProjectStore } from "@/lib/stores/project"
@@ -26,30 +25,30 @@ const panelContent: Record<
   storyboard: {
     label: "Storyboard",
     title: "Pre-production board",
-    description: "Style cards, characters, and frame planning will land here in Phase 2.",
+    description: "Static style cards, character references, and editable shot planning for the demo.",
     icon: Grid3X3,
-    items: ["Frame grid placeholder", "Library sidebar reserved", "Generate board action locked"]
+    items: ["Editable shot grid", "Demo library", "Static visual references"]
   },
   workspace: {
     label: "Cinema Workspace",
     title: "Node canvas foundation",
-    description: "The React Flow workspace, custom nodes, and cyan pulse edges arrive in Phase 3.",
+    description: "A local node canvas for exploring how prompts, style, cast, and camera direction relate.",
     icon: Wand2,
-    items: ["56px toolbar reserved", "320px properties panel reserved", "Execution model deferred"]
+    items: ["Graph editing", "Properties panel", "Connection rules"]
   },
   editing: {
     label: "Editing",
     title: "Timeline editing suite",
-    description: "Timeline tracks, clip controls, audio, and color tools arrive in Phase 4.",
+    description: "Timeline tracks, clip controls, audio direction, text overlays, and color tools.",
     icon: Film,
-    items: ["180px track header reserved", "Playhead model deferred", "WebCodecs export deferred"]
+    items: ["Resizable panels", "Playable timeline", "Color controls"]
   },
   export: {
     label: "Export",
     title: "Export and submission hub",
-    description: "Browser export, cloud export gating, and challenge submission arrive in later phases.",
+    description: "A static review hub showing how final output states will be presented.",
     icon: Clapperboard,
-    items: ["720p free-tier target", "Clapperboard progress deferred", "Distribution hub placeholder"]
+    items: ["Output summary", "Delivery checklist", "Demo-only actions"]
   }
 }
 
@@ -158,7 +157,12 @@ export function StudioShell({ initialTab }: { initialTab: StudioTab }) {
                 </div>
               </dl>
             </Card>
-            <PlanLockOverlay />
+            <Card className="p-4">
+              <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Demo Mode</h2>
+              <p className="mt-3 text-sm text-text-secondary">
+                This build is frontend-only: all visible project content is static or session-local.
+              </p>
+            </Card>
           </aside>
         </section>
       </main>

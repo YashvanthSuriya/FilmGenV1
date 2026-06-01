@@ -1,16 +1,13 @@
-import { Bell, Bot, Code2, CreditCard, Palette, User } from "lucide-react"
+import { Bell, MonitorCog, Palette, User } from "lucide-react"
 import { StudioTopNav } from "@/components/studio/studio-top-nav"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlanLockOverlay } from "@/components/ui/plan-lock-overlay"
 
 const sections = [
   { label: "Account", icon: User },
-  { label: "Subscription", icon: CreditCard },
-  { label: "API Keys", icon: Code2 },
   { label: "Notifications", icon: Bell },
-  { label: "AI Preferences", icon: Bot },
+  { label: "Demo Defaults", icon: MonitorCog },
   { label: "Appearance", icon: Palette }
 ]
 
@@ -41,7 +38,7 @@ export default function StudioSettingsPage() {
         <section className="p-4 sm:p-6">
           <div className="max-w-4xl">
             <h1 className="font-heading text-3xl font-bold text-text-primary">Settings</h1>
-            <p className="mt-2 text-text-secondary">Phase 1 account and preference foundation.</p>
+            <p className="mt-2 text-text-secondary">Frontend-only account and presentation preferences for the demo.</p>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
               <Card className="p-5">
@@ -61,15 +58,11 @@ export default function StudioSettingsPage() {
               </Card>
 
               <div className="space-y-4">
-                <PlanLockOverlay
-                  title="Subscription locked"
-                  description="Upgrades and credit purchases are intentionally disabled during the free-tier-only foundation."
-                />
                 <Card className="p-4">
                   <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">
-                    Free Tier
+                    Demo Build
                   </h2>
-                  <p className="mt-2 text-sm text-text-secondary">50 monthly credits, basic editor access, and future paid controls locked.</p>
+                  <p className="mt-2 text-sm text-text-secondary">No backend, subscriptions, credits, API keys, or cloud services are connected.</p>
                 </Card>
               </div>
             </div>

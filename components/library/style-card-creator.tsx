@@ -15,7 +15,6 @@ const palette = ["#00E5FF", "#FFB800", "#9B59FF", "#151515", "#F0F0F0"]
 
 export function StyleCardCreator({ open, onClose }: { open: boolean; onClose: () => void }) {
   const addStyleCard = useProjectStore((state) => state.addStyleCard)
-  const spendCredits = useProjectStore((state) => state.spendCredits)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [references, setReferences] = useState<string[]>([])
@@ -41,11 +40,6 @@ export function StyleCardCreator({ open, onClose }: { open: boolean; onClose: ()
       setError("Add a card name and style description first.")
       return
     }
-    if (!spendCredits(2, `Style analysis: ${name}`)) {
-      setError("Not enough credits for style analysis.")
-      return
-    }
-
     const styleCard: StyleCard = {
       id: `style-${Date.now()}`,
       name,
@@ -81,8 +75,8 @@ export function StyleCardCreator({ open, onClose }: { open: boolean; onClose: ()
         <section className="space-y-5 border-b border-border-subtle p-5 lg:border-b-0 lg:border-r">
           <Card className="grid min-h-44 place-items-center border-dashed bg-background p-6 text-center">
             <ImagePlus className="mb-3 h-8 w-8 text-accent-cyan" />
-            <p className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Drop images or click to upload</p>
-            <p className="mt-1 text-sm text-text-muted">Supports JPG, PNG, WEBP</p>
+            <p className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Reference Slot</p>
+            <p className="mt-1 text-sm text-text-muted">Adds a static visual swatch for the demo session</p>
             <Button className="mt-4" onClick={addReference}>
               Add Reference
             </Button>
@@ -133,7 +127,7 @@ export function StyleCardCreator({ open, onClose }: { open: boolean; onClose: ()
           {error ? <p className="text-sm text-accent-red">{error}</p> : null}
           <Button className="w-full bg-accent-cyan text-black hover:brightness-110" onClick={createCard}>
             <Sparkles className="mr-2 h-4 w-4" />
-            ANALYZE & CREATE (2 CREDITS)
+            SAVE DEMO STYLE
           </Button>
         </section>
 

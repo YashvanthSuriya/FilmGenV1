@@ -3,11 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Check, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Check, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/lib/supabase/client"
 
 type AuthMode = "sign-in" | "sign-up" | "forgot"
 
@@ -18,13 +17,11 @@ interface AuthFormProps {
 export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setLoading(true)
     setError(null)
     setMessage(null)
 
@@ -33,38 +30,25 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
     const password = String(formData.get("password") ?? "")
     const confirmPassword = String(formData.get("confirmPassword") ?? "")
 
-    try {
-      if (mode === "sign-up" && password !== confirmPassword) {
-        throw new Error("Passwords do not match.")
-      }
-
-      const supabase = createClient()
-
-      if (mode === "forgot") {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email)
-        if (resetError) throw resetError
-        setMessage("Check your email for reset instructions.")
-      } else if (mode === "sign-up") {
-        const { error: signUpError } = await supabase.auth.signUp({ email, password })
-        if (signUpError) throw signUpError
-        setMessage("Account created. Opening your studio.")
-        router.push("/studio?tab=storyboard")
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInError) throw signInError
-        setMessage("Signed in. Opening your studio.")
-        router.push("/studio?tab=storyboard")
-      }
-    } catch (authError) {
-      if (authError instanceof Error && authError.message.includes("Supabase is not configured") && mode !== "forgot") {
-        setMessage("Local studio session ready.")
-        router.push("/studio?tab=storyboard")
-        return
-      }
-      setError(authError instanceof Error ? authError.message : "Authentication is unavailable right now.")
-    } finally {
-      setLoading(false)
+    if (!email.includes("@")) {
+      setError("Enter an email-shaped value to open the demo.")
+      return
     }
+    if (mode === "forgot") {
+      setMessage("Password recovery is not connected in this UI demo.")
+      return
+    }
+    if (!password.trim()) {
+      setError("Enter any password value to preview the studio.")
+      return
+    }
+    if (mode === "sign-up" && password !== confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
+    setMessage("Opening the frontend demo.")
+    router.push("/studio?tab=storyboard")
   }
 
   return (
@@ -111,7 +95,7 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
           <Label htmlFor="confirmPassword">Confirm Password</Label>
           <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" />
           <div className="flex gap-2 pt-1">
-            {["Free", "Creator", "Filmmaker", "Director"].map((plan) => (
+            {["Story", "Workspace", "Edit", "Review"].map((plan) => (
               <span
                 key={plan}
                 className="rounded-full border border-border px-3 py-1 font-heading text-xs uppercase tracking-[0.08em] text-text-muted first:border-accent-cyan first:bg-accent-cyan-dim first:text-accent-cyan"
@@ -131,9 +115,8 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
         </p>
       ) : null}
 
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {mode === "sign-up" ? "Create Account" : mode === "forgot" ? "Send Reset Link" : "Sign In"}
+      <Button type="submit" variant="primary" size="lg" className="w-full">
+        {mode === "sign-up" ? "Open Demo Studio" : mode === "forgot" ? "Preview Recovery State" : "Enter Demo Studio"}
       </Button>
 
       {mode !== "forgot" ? (
@@ -143,8 +126,8 @@ export function AuthForm({ mode = "sign-in" }: AuthFormProps) {
             or
             <span className="h-px flex-1 bg-border-subtle" />
           </div>
-          <Button type="button" className="w-full bg-white text-black hover:bg-white/90" disabled>
-            Continue with Google
+          <Button type="button" className="w-full bg-white text-black hover:bg-white/90" onClick={() => router.push("/studio?tab=storyboard")}>
+            Continue to Demo
           </Button>
         </>
       ) : null}

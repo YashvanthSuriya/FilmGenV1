@@ -2,18 +2,16 @@ import type {
   AudioStudioState,
   ColorGradingState,
   EditingState,
-  GeneratedMedia,
   TextOverlayClip,
   TextOverlayState,
   TimelineClip,
-  TimelineClipType,
   TimelineTrack,
   TimelineTrackType
 } from "@/lib/types"
 
 const DEFAULT_CLIP_DURATION = 5
 const MIN_CLIP_DURATION = 0.25
-const CLIP_GAP = 0.25
+const CLIP_GAP = 0
 const SNAP_INTERVAL = 0.25
 const SNAP_THRESHOLD = 0.12
 
@@ -36,6 +34,9 @@ export function createInitialEditingState(): EditingState {
     selectedClipId: null,
     timelineZoom: 1,
     playbackSpeed: 1,
+    muted: false,
+    previewVolume: 100,
+    selectedToolWindow: null,
     volume: 80,
     colorGrading: createDefaultColorGradingState(),
     audioState: createDefaultAudioStudioState(),
@@ -145,29 +146,6 @@ export function createTrack(id: string, type: TimelineTrackType, name: string, o
   }
 }
 
-export function clipTypeFromMedia(media: GeneratedMedia): TimelineClipType {
-  if (media.type === "audio") return "audio"
-  if (media.type === "video") return "video"
-  return "image"
-}
-
-export function createClipFromMedia(media: GeneratedMedia, trackId: string, start: number, duration = DEFAULT_CLIP_DURATION): TimelineClip {
-  const type = clipTypeFromMedia(media)
-  return createTimelineClip({
-    id: `clip-${media.id}-${Date.now()}`,
-    trackId,
-    mediaId: media.id,
-    assetId: media.assetId,
-    source: media.source,
-    type,
-    name: media.prompt || `${type.toUpperCase()} ${media.id.slice(-4)}`,
-    start,
-    duration,
-    url: media.url,
-    thumbnailUrl: media.type === "image" ? media.url : undefined
-  })
-}
-
 export function createTimelineClip(input: Partial<TimelineClip> & Pick<TimelineClip, "id" | "trackId" | "type" | "name">): TimelineClip {
   const duration = Math.max(MIN_CLIP_DURATION, input.duration ?? DEFAULT_CLIP_DURATION)
   return {
@@ -187,6 +165,7 @@ export function createTimelineClip(input: Partial<TimelineClip> & Pick<TimelineC
     rotation: input.rotation ?? 0,
     flipX: input.flipX ?? false,
     flipY: input.flipY ?? false,
+    fit: input.fit ?? "contain",
     blendMode: input.blendMode ?? "normal"
   }
 }
@@ -210,7 +189,7 @@ export function duplicateClip(clips: TimelineClip[], clipId: string) {
     ...source,
     id: `${source.id}-copy-${Date.now()}`,
     name: `${source.name} Copy`,
-    start: source.start + source.duration + 0.25
+    start: source.start + source.duration
   })
 }
 

@@ -1,10 +1,10 @@
 "use client"
 
-import { Pause, Play, SkipBack, SkipForward, StepBack, StepForward, Volume2 } from "lucide-react"
+import { Pause, Play, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useProjectStore } from "@/lib/stores/project"
-import { TIMELINE_FPS, formatTimecode, parseTimecode } from "@/lib/editing/playback"
+import { TIMELINE_FPS, clampPlayhead, formatTimecode, parseTimecode, shouldRestartPlayback } from "@/lib/editing/playback"
 
 const speeds = [0.25, 0.5, 1, 1.5, 2]
 
@@ -14,34 +14,47 @@ export function TransportControls({ duration }: { duration: number }) {
   const setPlayheadPosition = useProjectStore((state) => state.setPlayheadPosition)
   const setPlaybackSpeed = useProjectStore((state) => state.setPlaybackSpeed)
   const setTimelineVolume = useProjectStore((state) => state.setTimelineVolume)
+  const setPreviewMuted = useProjectStore((state) => state.setPreviewMuted)
+  const setPreviewVolume = useProjectStore((state) => state.setPreviewVolume)
   const playing = editing.playbackState === "playing"
 
   function commitTimecode(value: string) {
     const seconds = parseTimecode(value)
-    if (seconds !== null) setPlayheadPosition(Math.min(duration, seconds))
+    if (seconds !== null) setPlayheadPosition(clampPlayhead(seconds, duration))
+  }
+
+  function togglePlayback() {
+    if (playing) {
+      setPlaybackState("paused")
+      return
+    }
+    if (shouldRestartPlayback(editing.playheadPosition, duration)) setPlayheadPosition(0)
+    setPlaybackState("playing")
   }
 
   return (
-    <section className="flex min-h-0 flex-wrap items-center justify-center gap-3 overflow-hidden border-b border-border-subtle bg-surface px-4 py-3 shadow-md">
-      <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(0)} aria-label="Back to start">
-        <SkipBack className="h-4 w-4" />
-      </Button>
-      <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(Math.max(0, editing.playheadPosition - 1 / TIMELINE_FPS))} aria-label="Previous frame">
-        <StepBack className="h-4 w-4" />
-      </Button>
-      <Button size="icon" variant="primary" onClick={() => setPlaybackState(playing ? "paused" : "playing")} aria-label={playing ? "Pause" : "Play"}>
-        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-      </Button>
-      <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(Math.min(duration, editing.playheadPosition + 1 / TIMELINE_FPS))} aria-label="Next frame">
-        <StepForward className="h-4 w-4" />
-      </Button>
-      <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(duration)} aria-label="End">
-        <SkipForward className="h-4 w-4" />
-      </Button>
+    <section className="flex min-h-0 flex-wrap items-center justify-center gap-1.5 overflow-hidden border-b border-border-subtle bg-surface px-2 py-1.5 shadow-md">
+      <div className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border-subtle bg-background p-1">
+        <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(0)} aria-label="Back to start">
+          <SkipBack className="h-4 w-4" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(clampPlayhead(editing.playheadPosition - 1 / TIMELINE_FPS, duration))} aria-label="Previous frame">
+          <StepBack className="h-4 w-4" />
+        </Button>
+        <Button size="icon" variant="primary" onClick={togglePlayback} disabled={duration <= 0} aria-label={playing ? "Pause" : "Play"}>
+          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </Button>
+        <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(clampPlayhead(editing.playheadPosition + 1 / TIMELINE_FPS, duration))} aria-label="Next frame">
+          <StepForward className="h-4 w-4" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={() => setPlayheadPosition(duration)} aria-label="End">
+          <SkipForward className="h-4 w-4" />
+        </Button>
+      </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-background p-1">
         <Input
-          className="h-9 w-28 font-body text-xs"
+          className="h-8 w-24 font-body text-xs"
           value={formatTimecode(editing.playheadPosition)}
           onChange={(event) => commitTimecode(event.target.value)}
           aria-label="Current timecode"
@@ -50,7 +63,7 @@ export function TransportControls({ duration }: { duration: number }) {
       </div>
 
       <select
-        className="h-9 rounded-[var(--radius-md)] border border-border bg-elevated px-2 font-heading text-xs uppercase text-text-primary"
+        className="h-9 rounded-[var(--radius-md)] border border-border-subtle bg-background px-2 font-heading text-xs uppercase text-text-primary"
         value={editing.playbackSpeed}
         onChange={(event) => setPlaybackSpeed(Number(event.target.value))}
         aria-label="Playback speed"
@@ -60,16 +73,21 @@ export function TransportControls({ duration }: { duration: number }) {
         ))}
       </select>
 
-      <label className="flex items-center gap-2 rounded-full border border-border-subtle bg-elevated px-3 py-1.5 text-text-secondary">
-        <Volume2 className="h-4 w-4" />
+      <label className="flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-background px-2 text-text-secondary max-sm:hidden">
+        <button type="button" onClick={() => setPreviewMuted(!editing.muted)} className="grid h-6 w-6 place-items-center rounded hover:bg-elevated" aria-label={editing.muted ? "Unmute preview" : "Mute preview"}>
+          {editing.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
         <input
-          className="w-28 accent-cyan"
+          className="w-20 accent-cyan"
           type="range"
           min={0}
           max={100}
-          value={editing.volume}
-          onChange={(event) => setTimelineVolume(Number(event.target.value))}
-          aria-label="Timeline volume"
+          value={editing.previewVolume}
+          onChange={(event) => {
+            setPreviewVolume(Number(event.target.value))
+            setTimelineVolume(Number(event.target.value))
+          }}
+          aria-label="Preview volume"
         />
       </label>
     </section>

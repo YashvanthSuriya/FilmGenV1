@@ -3,10 +3,9 @@ import type { Edge, Node } from "@xyflow/react"
 export const studioTabs = ["storyboard", "workspace", "editing", "export"] as const
 
 export type StudioTab = (typeof studioTabs)[number]
-export type PlanTier = "free" | "creator" | "filmmaker" | "director"
-export type CreditEventType = "spend" | "purchase" | "refund" | "reset"
 export type WorkspaceNodeType =
   | "styleCard"
+  | "actionCard"
   | "character"
   | "prompt"
   | "cameraConfig"
@@ -20,7 +19,7 @@ export type TimelineTrackType = "video" | "audio" | "overlay"
 export type TimelineClipType = "video" | "image" | "audio" | "overlay"
 export type TimelinePlaybackStatus = "idle" | "playing" | "paused"
 export type TimelineTransitionType = "cut" | "dissolve" | "wipe" | "dipToBlack" | "fadeInOut"
-export type ProjectAssetSource = "storyboard" | "workspace" | "import"
+export type ProjectAssetSource = "storyboard" | "workspace"
 export type ProjectAssetType = "image" | "video" | "audio"
 export type ColorWheelKey = "lift" | "gamma" | "gain"
 export type CurveChannel = "master" | "red" | "green" | "blue"
@@ -31,14 +30,9 @@ export type AudioGenre = "Cinematic" | "Electronic" | "Jazz" | "Acoustic" | "Amb
 export type AudioIntensity = "Calm" | "Moderate" | "Intense"
 export type SfxCategory = "Ambient" | "Foley" | "Music" | "Transitions" | "Nature" | "UI" | "Weather" | "Urban" | "Interior" | "Sci-Fi"
 export type TextOverlayAnimation = "None" | "Fade" | "Slide In" | "Typewriter" | "Glow"
-
-export interface CreditTransaction {
-  id: string
-  type: CreditEventType
-  amount: number
-  description: string
-  createdAt: string
-}
+export type WorkspaceMode = "amateur" | "director"
+export type ProjectSyncStatus = "local" | "queued" | "synced" | "error"
+export type EditorToolWindow = "inspector" | "color" | "audio" | null
 
 export interface StyleCard {
   id: string
@@ -73,9 +67,29 @@ export interface StoryboardFrame {
   imageUrl?: string
 }
 
+export interface ActionCard {
+  id: string
+  title: string
+  beat: string
+  subject: string
+  action: string
+  emotion: string
+}
+
+export interface StoryboardStitch {
+  id: string
+  frameIds: string[]
+  title: string
+  imageUrl: string
+  feedback: string
+  promptPayload: string
+  createdAt: string
+}
+
 export interface WorkspaceNodeData extends Record<string, unknown> {
   label?: string
   styleCardId?: string
+  actionCardId?: string
   characterId?: string
   prompt?: string
   script?: string
@@ -100,21 +114,21 @@ export type WorkspaceEdge = Edge<WorkspaceEdgeData>
 export interface WorkspaceProjectSlot {
   id: string
   name: string
+  mode?: WorkspaceMode
+  amateur?: AmateurWorkflowState
   nodes: WorkspaceNode[]
   edges: WorkspaceEdge[]
   viewport: { x: number; y: number; zoom: number }
   lastAutosavedAt: string | null
 }
 
-export interface GeneratedMedia {
-  id: string
-  type: "image" | "video" | "audio" | "script"
-  url?: string
-  prompt?: string
-  creditsUsed: number
-  createdAt: string
-  assetId?: string
-  source?: ProjectAssetSource
+export interface AmateurWorkflowState {
+  styleCardId?: string
+  actionCardId?: string
+  camera: CameraConfig
+  prompt: string
+  outputType: "image" | "video"
+  previewUrl?: string
 }
 
 export interface ProjectAsset {
@@ -125,13 +139,39 @@ export interface ProjectAsset {
   prompt?: string
   thumbnailUrl?: string
   url?: string
+  blobKey?: string
+  mimeType?: string
+  fileSize?: number
   duration?: number
   createdAt: string
   storyboardFrameId?: string
   workspaceNodeId?: string
-  blobKey?: string
-  mimeType?: string
-  size?: number
+}
+
+export interface ProjectSlot {
+  id: string
+  name: string
+  ownerId?: string
+  projectId: string
+  updatedAt: string
+  version: number
+  syncStatus: ProjectSyncStatus
+  styleCards: StyleCard[]
+  characters: Character[]
+  actionCards: ActionCard[]
+  storyboardFrames: StoryboardFrame[]
+  storyboardStitches: StoryboardStitch[]
+  assets: ProjectAsset[]
+  cameraConfig: CameraConfig
+  editingState: EditingState
+  workspaceMode: WorkspaceMode
+  workspaceMemory: {
+    activeWorkspaceId: string
+    workspaces: WorkspaceProjectSlot[]
+    nodes: WorkspaceNode[]
+    edges: WorkspaceEdge[]
+    viewport: { x: number; y: number; zoom: number }
+  }
 }
 
 export interface TimelineTrack {
@@ -171,6 +211,7 @@ export interface TimelineClip {
   rotation: number
   flipX: boolean
   flipY: boolean
+  fit: "contain" | "cover"
   blendMode: "normal" | "screen" | "multiply" | "overlay"
 }
 
@@ -291,6 +332,9 @@ export interface EditingState {
   selectedClipId: string | null
   timelineZoom: number
   playbackSpeed: number
+  muted: boolean
+  previewVolume: number
+  selectedToolWindow: EditorToolWindow
   volume: number
   colorGrading: ColorGradingState
   audioState: AudioStudioState

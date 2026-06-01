@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Film, ImagePlus, Library, Plus, UserPlus } from "lucide-react"
-import { AIStoryboardGenerator } from "@/components/storyboard/ai-storyboard-generator"
+import { Film, ImagePlus, Library, Plus, Sparkles, UserPlus } from "lucide-react"
 import { StoryboardFrameCard } from "@/components/storyboard/storyboard-frame-card"
 import { StyleCardCreator } from "@/components/library/style-card-creator"
 import { CharacterCreator } from "@/components/library/character-creator"
@@ -10,16 +9,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { useProjectStore } from "@/lib/stores/project"
-import type { StoryboardFrame } from "@/lib/types"
+import type { StoryboardFrame, StoryboardStitch } from "@/lib/types"
 
 export function StoryboardWorkspace() {
   const styleCards = useProjectStore((state) => state.styleCards)
   const characters = useProjectStore((state) => state.characters)
   const frames = useProjectStore((state) => state.storyboardFrames)
+  const stitches = useProjectStore((state) => state.storyboardStitches)
   const addStoryboardFrames = useProjectStore((state) => state.addStoryboardFrames)
+  const createStoryboardStitch = useProjectStore((state) => state.createStoryboardStitch)
   const [styleOpen, setStyleOpen] = useState(false)
   const [characterOpen, setCharacterOpen] = useState(false)
-  const [generatorOpen, setGeneratorOpen] = useState(false)
   const [view, setView] = useState<"grid" | "list" | "storyboard">("grid")
 
   function addShot() {
@@ -80,7 +80,7 @@ export function StoryboardWorkspace() {
               ))}
             </LibrarySection>
 
-            <LibrarySection title="Assets" count={0} onAdd={() => undefined} empty="Asset uploads arrive with storage." />
+            <LibrarySection title="Assets" count={0} onAdd={() => undefined} empty="Demo assets are shown in the editing workspace." />
           </div>
         </aside>
 
@@ -106,9 +106,13 @@ export function StoryboardWorkspace() {
                   </button>
                 ))}
               </div>
-              <Button variant="secondary">Export PDF</Button>
-              <Button className="bg-accent-cyan text-black hover:brightness-110" onClick={() => setGeneratorOpen(true)}>
-                Generate Board
+              <Button variant="secondary" disabled title="PDF export is intentionally absent from the frontend-only demo.">PDF Disabled</Button>
+              <Button variant="secondary" onClick={() => setView("storyboard")}>
+                <Sparkles className="h-4 w-4" />
+                Stitch
+              </Button>
+              <Button className="bg-accent-cyan text-black hover:brightness-110" onClick={addShot}>
+                Add Shot
               </Button>
             </div>
           </div>
@@ -120,14 +124,14 @@ export function StoryboardWorkspace() {
                   <Film className="h-9 w-9 text-accent-cyan" />
                 </div>
                 <h2 className="font-heading text-2xl font-bold text-text-primary">Add your first shot to begin</h2>
-                <p className="mt-2 text-text-secondary">Build frames manually or generate a board from a scene description.</p>
+                <p className="mt-2 text-text-secondary">Build frames manually with static demo imagery and editable shot notes.</p>
                 <Button className="mt-5 bg-accent-cyan text-black hover:brightness-110" onClick={addShot}>
                   Add Shot
                 </Button>
               </div>
             </Card>
           ) : view === "storyboard" ? (
-            <StitchedStoryboard frames={frames} onAddShot={addShot} />
+            <StitchedStoryboard frames={frames} stitches={stitches} onCreate={createStoryboardStitch} onAddShot={addShot} />
           ) : (
             <div className={view === "grid" ? "grid gap-4 md:grid-cols-2 xl:grid-cols-3" : "grid gap-4"}>
               {frames.map((frame, index) => (
@@ -150,18 +154,38 @@ export function StoryboardWorkspace() {
 
       <StyleCardCreator open={styleOpen} onClose={() => setStyleOpen(false)} />
       <CharacterCreator open={characterOpen} onClose={() => setCharacterOpen(false)} />
-      <AIStoryboardGenerator open={generatorOpen} onClose={() => setGeneratorOpen(false)} />
     </div>
   )
 }
 
-function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; onAddShot: () => void }) {
+function StitchedStoryboard({
+  frames,
+  stitches,
+  onCreate,
+  onAddShot
+}: {
+  frames: StoryboardFrame[]
+  stitches: StoryboardStitch[]
+  onCreate: (input: { frameIds: string[]; title: string; feedback: string }) => unknown
+  onAddShot: () => void
+}) {
+  const [selectedIds, setSelectedIds] = useState(() => frames.map((frame) => frame.id))
+  const [feedback, setFeedback] = useState("Keep panel continuity, readable cinematic framing, and clear shot order.")
+  const [title, setTitle] = useState("Stitched Storyboard")
+  const latest = stitches[0]
+
+  function toggleFrame(frameId: string) {
+    setSelectedIds((current) => (current.includes(frameId) ? current.filter((id) => id !== frameId) : [...current, frameId]))
+  }
+
   return (
-    <section className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface p-4">
+    <section className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">Sequence Strip</h2>
-          <p className="mt-1 text-sm text-text-muted">Scan shot order from beat to frame before sending shots into production.</p>
+          <p className="mt-1 text-sm text-text-muted">Select shots, stitch a contact sheet, then prepare a provider-ready AI storyboard prompt.</p>
         </div>
         <Button size="sm" variant="secondary" onClick={onAddShot}>
           <Plus className="h-4 w-4" />
@@ -171,10 +195,12 @@ function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; 
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border-subtle bg-background p-3">
         <div className="flex min-w-max gap-3">
           {frames.map((frame, index) => (
-            <article key={frame.id} className="w-72 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-elevated">
+            <article key={frame.id} className={`w-72 shrink-0 overflow-hidden rounded-[var(--radius-md)] border bg-elevated ${selectedIds.includes(frame.id) ? "border-accent-cyan" : "border-border-subtle opacity-55"}`}>
               <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
                 <p className="font-heading text-xs uppercase tracking-[0.08em] text-accent-cyan">SH-{String(index + 1).padStart(2, "0")}</p>
-                <p className="font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">{frame.shotType} / {frame.cameraMovement}</p>
+                <button type="button" onClick={() => toggleFrame(frame.id)} className="font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted hover:text-accent-cyan">
+                  {selectedIds.includes(frame.id) ? "Included" : "Skipped"}
+                </button>
               </div>
               <div
                 className="aspect-video bg-cover bg-center"
@@ -191,6 +217,30 @@ function StitchedStoryboard({ frames, onAddShot }: { frames: StoryboardFrame[]; 
             </article>
           ))}
         </div>
+      </div>
+      </section>
+      <aside className="rounded-[var(--radius-lg)] border border-border-subtle bg-surface p-4">
+        <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-text-primary">AI Stitch Prep</h2>
+        <p className="mt-1 text-sm text-text-muted">Provider-ready mock for a future image model adapter. No paid API call runs here.</p>
+        <label className="mt-4 block">
+          <span className="mb-1 block font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">Title</span>
+          <input value={title} onChange={(event) => setTitle(event.target.value)} className="h-10 w-full rounded border border-border bg-background px-3 text-sm text-text-primary outline-none focus:border-accent-cyan" />
+        </label>
+        <label className="mt-3 block">
+          <span className="mb-1 block font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">Feedback / Prompt Injection</span>
+          <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} className="min-h-28 w-full rounded border border-border bg-background p-3 text-sm text-text-primary outline-none focus:border-accent-cyan" />
+        </label>
+        <Button className="mt-3 w-full bg-accent-cyan text-black hover:brightness-110" onClick={() => onCreate({ frameIds: selectedIds, title, feedback })} disabled={selectedIds.length === 0}>
+          <Sparkles className="h-4 w-4" />
+          Build Stitch Payload
+        </Button>
+        {latest ? (
+          <div className="mt-4 space-y-3">
+            <div className="aspect-video rounded border border-border-subtle bg-cover bg-center" style={{ backgroundImage: latest.imageUrl.startsWith("data:") ? `url(${latest.imageUrl})` : latest.imageUrl }} />
+            <textarea readOnly value={latest.promptPayload} className="min-h-40 w-full rounded border border-border-subtle bg-background p-3 text-xs text-text-secondary" />
+          </div>
+        ) : null}
+      </aside>
       </div>
     </section>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { Mic, Play, Sparkles } from "lucide-react"
+import { Mic, Play } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,6 @@ export function VoiceoverPanel() {
   const [speed, setSpeed] = useState(1)
   const [pitch, setPitch] = useState(0)
   const voiceovers = useProjectStore((state) => state.editingState.audioState.voiceovers)
-  const generate = useProjectStore((state) => state.generateMockVoiceover)
 
   return (
     <section className="rounded-[var(--radius-md)] border border-border-subtle bg-elevated p-3">
@@ -32,16 +31,15 @@ export function VoiceoverPanel() {
         <Range label="Speed" value={speed} min={0.5} max={2} step={0.1} onChange={setSpeed} />
         <Range label="Pitch" value={pitch} min={-12} max={12} onChange={setPitch} />
       </div>
-      <Button className="mt-3 w-full" variant="primary" onClick={() => generate({ script, voice, speed, pitch })}>
-        <Sparkles className="h-4 w-4" />
-        Generate Voiceover (3 Credits/Min)
+      <Button className="mt-3 w-full" variant="secondary" disabled title="Voice generation is intentionally absent from the frontend-only demo.">
+        Demo Voice Direction
       </Button>
       <div className="mt-3 rounded border border-dashed border-border-subtle bg-background p-3 text-xs text-text-muted">
         <div className="mb-2 flex items-center gap-2 text-text-secondary">
           <Mic className="h-4 w-4 text-accent-red" />
-          Browser mic recording placeholder
+          Static narration reference
         </div>
-        {voiceovers[0] ? `Last mock voiceover: ${voiceovers[0].voice}, ${voiceovers[0].duration}s` : "No voiceover generated yet."}
+        {voiceovers[0] ? `${voiceovers[0].voice}, ${voiceovers[0].duration}s demo read` : "No narration reference selected."}
       </div>
     </section>
   )
