@@ -6,6 +6,11 @@ function parseTab(tab: string | string[] | undefined): StudioTab {
   return studioTabs.includes(value as StudioTab) ? (value as StudioTab) : "storyboard"
 }
 
-export default function StudioPage({ searchParams }: { searchParams?: { tab?: string | string[] } }) {
-  return <StudioShell initialTab={parseTab(searchParams?.tab)} />
+export default async function StudioPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ tab?: string | string[] }>
+}) {
+  const resolvedSearchParams = await searchParams
+  return <StudioShell initialTab={parseTab(resolvedSearchParams?.tab)} />
 }

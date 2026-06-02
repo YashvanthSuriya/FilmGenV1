@@ -1,0 +1,2 @@
+import{t as e}from"./media-library-store-D1HtXCQK.js";function t(t){if(!t)return;let n=e.getState().mediaById[t];if(n){if(n.mimeType.startsWith(`video/`))return n.audioCodec;if(n.mimeType.startsWith(`audio/`))return n.codec}}export{t};
+//# sourceMappingURL=media-library-Dr9iIxbE.js.map

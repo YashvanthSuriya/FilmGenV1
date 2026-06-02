@@ -1,0 +1,2 @@
+var e=.01;function t(t,n,r){if(t.length===0)return r;let i=t.map(e=>n(e)??r),a=i[0];return i.every(t=>typeof t==`number`&&typeof a==`number`?Math.abs(t-a)<e:t===a)?a:`mixed`}export{t};
+//# sourceMappingURL=mixed-value-DZwb1rVw.js.map

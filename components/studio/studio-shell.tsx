@@ -5,7 +5,7 @@ import { Camera, Clapperboard, Film, Grid3X3, Wand2 } from "lucide-react"
 import { StudioTopNav } from "@/components/studio/studio-top-nav"
 import { StoryboardWorkspace } from "@/components/storyboard/storyboard-workspace"
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas"
-import { EditingLayout } from "@/components/editing/EditingLayout"
+import { FreeCutFrame } from "@/components/editing/FreeCutFrame"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { StudioErrorBoundary } from "@/components/ui/studio-error-boundary"
@@ -89,7 +89,7 @@ export function StudioShell({ initialTab }: { initialTab: StudioTab }) {
       <div className="min-h-screen bg-background">
         <StudioTopNav activeTab={activeTab} />
         <StudioErrorBoundary>
-          <EditingLayout />
+          <FreeCutFrame />
         </StudioErrorBoundary>
       </div>
     )

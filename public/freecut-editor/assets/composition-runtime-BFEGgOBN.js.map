@@ -1,0 +1,1 @@
+{"version":3,"file":"composition-runtime-BFEGgOBN.js","names":[],"sources":["../../src/features/editor/deps/composition-runtime.ts"],"sourcesContent":["/**\n * Compatibility adapter that re-exports through composition-runtime-contract.\n */\n\nexport * from './composition-runtime-contract'\n"],"mappings":""}
