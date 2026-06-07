@@ -26,7 +26,7 @@ import type {
 } from "@/lib/types"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import { projectRepository } from "@/lib/stores/projectRepository"
-import { applyTransition, removeTransition } from "@/lib/editing/transitions"
+import { applyTransition, removeTransition } from "@/lib/editor/transitions"
 import {
   addClip,
   createDefaultTextOverlayClip,
@@ -41,7 +41,7 @@ import {
   splitClip,
   trimClip,
   updateClip
-} from "@/lib/editing/timeline"
+} from "@/lib/editor/timeline"
 import { createClipFromAsset, defaultTrackForAsset } from "@/lib/media/assets"
 
 export interface ProjectStore {

@@ -1,5 +1,5 @@
 import type { ProjectAsset, TimelineClip, TimelineTrack } from "@/lib/types"
-import { createTimelineClip } from "@/lib/editing/timeline"
+import { createTimelineClip } from "@/lib/editor/timeline"
 
 export function defaultTrackForAsset(asset: ProjectAsset, tracks: TimelineTrack[]) {
   const compatibleType = asset.type === "audio" ? "audio" : "video"

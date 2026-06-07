@@ -1,15 +1,17 @@
 const CACHE_VERSION = 'freecut-app-shell-v1'
 const APP_SHELL_URLS = [
-  '/',
-  '/index.html',
-  '/favicon.svg',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-512.png',
+  '/freecut-editor/',
+  '/freecut-editor/index.html',
+  '/freecut-editor/favicon.svg',
+  '/freecut-editor/manifest.webmanifest',
+  '/freecut-editor/icons/icon-192.png',
+  '/freecut-editor/icons/icon-512.png',
+  '/freecut-editor/icons/icon-maskable-512.png',
 ]
 const CACHEABLE_DESTINATIONS = new Set(['document', 'script', 'style', 'font', 'image'])
-const EXCLUDED_PATH_PREFIXES = ['/moss-tts/']
+const APP_SCOPE = '/freecut-editor/'
+const OFFLINE_FALLBACK_URL = '/freecut-editor/index.html'
+const EXCLUDED_PATH_PREFIXES = ['/freecut-editor/moss-tts/']
 const MAX_DYNAMIC_CACHE_ENTRIES = 160
 
 self.addEventListener('install', (event) => {
@@ -50,6 +52,10 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  if (!url.pathname.startsWith(APP_SCOPE)) {
+    return
+  }
+
   if (EXCLUDED_PATH_PREFIXES.some((pathPrefix) => url.pathname.startsWith(pathPrefix))) {
     return
   }
@@ -78,11 +84,11 @@ async function networkFirstWithOfflineFallback(request) {
   try {
     const response = await fetch(request)
     if (response.ok) {
-      cache.put('/index.html', response.clone())
+      cache.put(OFFLINE_FALLBACK_URL, response.clone())
     }
     return response
   } catch {
-    return (await cache.match('/index.html')) ?? Response.error()
+    return (await cache.match(OFFLINE_FALLBACK_URL)) ?? Response.error()
   }
 }
 

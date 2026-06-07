@@ -1,6 +1,34 @@
 import type { Edge, Node } from "@xyflow/react"
 
-export const studioTabs = ["storyboard", "workspace", "editing", "export"] as const
+export type Plan = "basic" | "pro" | "director"
+export type GenerationStatus = "queued" | "processing" | "completed" | "failed" | "cancelled"
+export type MediaType = "image" | "video" | "audio"
+
+export interface ProjectStub {
+  _id: string
+  ownerId: string
+  title: string
+  description?: string
+  status: "draft" | "active" | "archived"
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "21:9"
+  createdAt: number
+  updatedAt: number
+}
+
+export interface GenerationJobStub {
+  _id: string
+  userId: string
+  status: GenerationStatus
+  type: "image" | "video" | "script" | "music" | "voiceover" | "storyboard" | "actor-sheet"
+  prompt: string
+  model: string
+  creditsUsed: number
+  resultMediaId?: string
+  errorMessage?: string
+  createdAt: number
+}
+
+export const studioTabs = ["storyboard", "workspace", "editing", "gallery", "challenges", "export"] as const
 
 export type StudioTab = (typeof studioTabs)[number]
 export type WorkspaceNodeType =
@@ -128,6 +156,15 @@ export interface AmateurWorkflowState {
   camera: CameraConfig
   prompt: string
   outputType: "image" | "video"
+  model?: "seedance-2" | "kling" | "ray-3-14" | "modify"
+  duration?: 5 | 10 | 15
+  quality?: "480p" | "720p" | "1080p"
+  references?: Array<{
+    id: string
+    type: "image" | "video"
+    name: string
+    src: string
+  }>
   previewUrl?: string
 }
 

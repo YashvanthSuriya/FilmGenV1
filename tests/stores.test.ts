@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useProjectStore } from "@/lib/stores/project"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import { studioTabs } from "@/lib/types"
-import { createInitialEditingState } from "@/lib/editing/timeline"
+import { createInitialEditingState } from "@/lib/editor/timeline"
 
 describe("frontend demo stores", () => {
   beforeEach(() => {
