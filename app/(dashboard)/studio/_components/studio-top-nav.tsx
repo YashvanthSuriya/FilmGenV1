@@ -5,7 +5,7 @@ import { SignOutButton } from "@clerk/nextjs"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { Bell, Check, Download, Edit3, Film, LayoutGrid, LogOut, Menu, PlaySquare, Plus, Settings, Trash2, Trophy, User, X } from "lucide-react"
+import { Bell, Check, Edit3, Film, LayoutGrid, LogOut, Menu, PlaySquare, Plus, Settings, Trash2, Trophy, User, X } from "lucide-react"
 import { BrandLogo } from "@/components/brand-logo"
 import {
   DropdownMenuContent,
@@ -21,8 +21,7 @@ const tabLabels: Record<StudioTab, string> = {
   workspace: "Cinema Workspace",
   editing: "Editing",
   gallery: "Gallery",
-  challenges: "Challenges",
-  export: "Export"
+  challenges: "Challenges"
 }
 
 const tabIcons: Record<StudioTab, React.ComponentType<{ className?: string }>> = {
@@ -30,8 +29,7 @@ const tabIcons: Record<StudioTab, React.ComponentType<{ className?: string }>> =
   workspace: LayoutGrid,
   editing: Edit3,
   gallery: PlaySquare,
-  challenges: Trophy,
-  export: Download
+  challenges: Trophy
 }
 
 interface StudioTopNavProps {

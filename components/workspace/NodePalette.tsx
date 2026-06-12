@@ -13,7 +13,7 @@ export const workspaceTools: Array<{ type: WorkspaceNodeType; label: string; ico
   { type: "cameraConfig", label: "Camera", icon: Camera },
   { type: "imageOutput", label: "Image", icon: Image },
   { type: "videoOutput", label: "Video", icon: Video },
-  { type: "combiner", label: "Combiner", icon: Combine },
+  { type: "combiner", label: "Shot Builder", icon: Combine },
   { type: "script", label: "Script", icon: ScrollText },
   { type: "preview", label: "Preview", icon: MonitorPlay }
 ]

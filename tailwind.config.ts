@@ -11,6 +11,9 @@ const config: Config = {
     extend: {
       colors: {
         background: "var(--bg)",
+        card: "var(--color-card)",
+        foreground: "var(--color-foreground)",
+        "muted-foreground": "var(--color-muted-foreground)",
         surface: "var(--bg-surface)",
         elevated: "var(--bg-elevated)",
         overlay: "var(--bg-overlay)",

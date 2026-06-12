@@ -35,7 +35,7 @@ export default function HomePage() {
               AI film creation from story cards to final edit.
             </h1>
             <p className="mt-5 max-w-2xl text-lg text-text-secondary">
-              Plan shots, arrange creative direction, and move into the FreeCut editing workspace from one protected studio shell.
+              Plan shots, arrange creative direction, and stage the final edit from one protected studio shell.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Button asChild variant="primary" size="lg">

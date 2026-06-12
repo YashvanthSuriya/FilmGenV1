@@ -36,7 +36,7 @@
 
 **No substitutions without updating this document.**
 
-Current implementation note: the root studio currently embeds FreeCut as the active editor. MediaBunny/ffmpeg are planned stack entries from the larger roadmap, but they are not active in the root studio surface.
+Current implementation note: the root studio currently shows a native editor placeholder in the Editing tab. FreeCut is no longer served or built by the root studio. MediaBunny/ffmpeg are planned stack entries from the larger roadmap, but they are not active in the root studio surface.
 
 ---
 
@@ -221,7 +221,7 @@ Current implementation note: the root studio currently embeds FreeCut as the act
 
 ### 5.5 Version Lock (Updated June 2026)
 - Next.js 15.5.x, React 19.2.x, TypeScript 5.9.x are the locked frontend versions.
-- FreeCut is the locked editor for MVP. Do not replace with MediaBunny/ffmpeg.wasm without human approval.
+- The Editing tab is intentionally a native placeholder after human-approved FreeCut removal. Do not introduce MediaBunny/ffmpeg.wasm or another active editor without human approval.
 - If upgrading versions, update this document and run full `npm run typecheck && npm run test && npm run build` before committing.
 
 ### 5.6 Clerk Auth (Mandatory)
@@ -240,10 +240,10 @@ Current implementation note: the root studio currently embeds FreeCut as the act
 - Do not build business logic that depends on stub behavior (e.g., do not assume `generateVideo()` returns a real URL).
 - Stubs must be replaced with real implementations during backend phase without changing their exported interfaces.
 
-### 5.9 FreeCut Editor Security
-- `FreeCutFrame` must validate `event.origin === window.location.origin` on all `postMessage` handlers.
+### 5.9 Editor Surface Security
+- External editor embeds are not active in the root studio. If one is reintroduced, all `postMessage` handlers must validate `event.origin === window.location.origin`.
 - Never use `postMessage(..., "*")` in production.
-- FreeCut service worker scope must be `/freecut-editor/` if PWA features are kept; otherwise unregister the SW.
+- Legacy `/freecut-editor/` service workers must be unregistered when users visit the native editor placeholder.
 
 ### 5.10 Mobile Navigation (Non-Negotiable)
 - Studio tabs must be accessible via hamburger menu below `md` breakpoint.

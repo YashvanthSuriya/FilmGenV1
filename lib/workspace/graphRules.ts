@@ -5,9 +5,9 @@ export const nextNodeRules: Record<WorkspaceNodeType, WorkspaceNodeType[]> = {
   actionCard: ["cameraConfig", "prompt", "combiner", "imageOutput", "videoOutput"],
   character: ["actionCard", "prompt", "combiner", "imageOutput", "videoOutput"],
   prompt: ["cameraConfig", "combiner", "imageOutput", "videoOutput", "script"],
-  cameraConfig: ["combiner", "imageOutput", "videoOutput", "preview"],
-  combiner: ["imageOutput", "videoOutput", "preview"],
-  script: ["prompt", "combiner", "videoOutput", "preview"],
+  cameraConfig: ["combiner", "imageOutput", "videoOutput"],
+  combiner: ["imageOutput", "videoOutput"],
+  script: ["prompt", "combiner", "videoOutput"],
   imageOutput: ["videoOutput", "preview"],
   videoOutput: ["preview"],
   preview: []

@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { Viewport } from "@xyflow/react"
-import type { AmateurWorkflowState, WorkspaceEdge, WorkspaceMode, WorkspaceNode, WorkspaceNodeData, WorkspaceNodeType, WorkspaceProjectSlot } from "@/lib/types"
+import type { WorkspaceEdge, WorkspaceMode, WorkspaceNode, WorkspaceNodeData, WorkspaceNodeType, WorkspaceProjectSlot } from "@/lib/types"
 
 export interface WorkspaceStore {
   workspaceMode: WorkspaceMode
@@ -27,7 +27,6 @@ export interface WorkspaceStore {
   setViewport: (viewport: Viewport) => void
   setSaved: (saved: boolean) => void
   setWorkspaceMode: (mode: WorkspaceMode) => void
-  setAmateurWorkflow: (patch: Partial<AmateurWorkflowState>) => void
 }
 
 const sessionStamp = "Session only"
@@ -58,9 +57,19 @@ const demoNodes: WorkspaceNode[] = [
     }
   },
   {
+    id: "demo-action",
+    type: "actionCard",
+    position: { x: 420, y: 250 },
+    data: {
+      label: "Market Crossing",
+      actionCardId: "action-market-crossing",
+      status: "idle"
+    }
+  },
+  {
     id: "demo-prompt",
     type: "prompt",
-    position: { x: 500, y: 120 },
+    position: { x: 740, y: 110 },
     data: {
       label: "Market Reveal Prompt",
       prompt: "Mira crosses a flooded neon market while drones sweep the crowd with cold searchlight.",
@@ -70,7 +79,7 @@ const demoNodes: WorkspaceNode[] = [
   {
     id: "demo-camera",
     type: "cameraConfig",
-    position: { x: 500, y: 380 },
+    position: { x: 740, y: 380 },
     data: {
       label: "35mm Dolly",
       camera: {
@@ -84,13 +93,30 @@ const demoNodes: WorkspaceNode[] = [
     }
   },
   {
+    id: "demo-image",
+    type: "imageOutput",
+    position: { x: 1100, y: 160 },
+    data: {
+      label: "Generated Frame",
+      status: "idle"
+    }
+  },
+  {
+    id: "demo-video",
+    type: "videoOutput",
+    position: { x: 1460, y: 160 },
+    data: {
+      label: "Motion Clip",
+      status: "idle"
+    }
+  },
+  {
     id: "demo-preview",
     type: "preview",
-    position: { x: 920, y: 190 },
+    position: { x: 1840, y: 160 },
     data: {
-      label: "Shot Preview",
-      previewUrl: "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(7,8,13,0.96) 46%, rgba(255,184,0,0.16))",
-      output: "Static demo frame",
+      label: "Sequence Preview",
+      output: "Run the image and video output nodes to populate this preview.",
       status: "idle"
     }
   }
@@ -99,8 +125,12 @@ const demoNodes: WorkspaceNode[] = [
 const demoEdges: WorkspaceEdge[] = [
   { id: "edge-style-prompt", source: "demo-style", target: "demo-prompt", type: "custom", animated: true, data: { status: "idle" } },
   { id: "edge-character-prompt", source: "demo-character", target: "demo-prompt", type: "custom", animated: true, data: { status: "idle" } },
-  { id: "edge-prompt-preview", source: "demo-prompt", target: "demo-preview", type: "custom", animated: true, data: { status: "idle" } },
-  { id: "edge-camera-preview", source: "demo-camera", target: "demo-preview", type: "custom", animated: true, data: { status: "idle" } }
+  { id: "edge-action-prompt", source: "demo-action", target: "demo-prompt", type: "custom", animated: true, data: { status: "idle" } },
+  { id: "edge-prompt-image", source: "demo-prompt", target: "demo-image", type: "custom", animated: true, data: { status: "idle" } },
+  { id: "edge-camera-image", source: "demo-camera", target: "demo-image", type: "custom", animated: true, data: { status: "idle" } },
+  { id: "edge-image-video", source: "demo-image", target: "demo-video", type: "custom", animated: true, data: { status: "idle" } },
+  { id: "edge-camera-video", source: "demo-camera", target: "demo-video", type: "custom", animated: true, data: { status: "idle" } },
+  { id: "edge-video-preview", source: "demo-video", target: "demo-preview", type: "custom", animated: true, data: { status: "idle" } }
 ]
 
 function createWorkspaceSlots(): WorkspaceProjectSlot[] {
@@ -109,7 +139,6 @@ function createWorkspaceSlots(): WorkspaceProjectSlot[] {
       id: "workspace-1",
       name: "Demo Board",
       mode: "director",
-      amateur: undefined,
       nodes: demoNodes,
       edges: demoEdges,
       viewport: { x: 0, y: 0, zoom: 0.75 },
@@ -119,13 +148,29 @@ function createWorkspaceSlots(): WorkspaceProjectSlot[] {
       id: "workspace-2",
       name: "Scratch",
       mode: "director",
-      amateur: undefined,
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 0.85 },
       lastAutosavedAt: null
     }
   ]
+}
+
+function isLegacyDemoWorkspace(workspace: WorkspaceProjectSlot) {
+  const nodeIds = new Set(workspace.nodes.map((node) => node.id))
+  return (
+    workspace.id === "workspace-1" &&
+    workspace.name === "Demo Board" &&
+    nodeIds.has("demo-preview") &&
+    !nodeIds.has("demo-image") &&
+    !nodeIds.has("demo-video") &&
+    workspace.nodes.every((node) => node.id.startsWith("demo-"))
+  )
+}
+
+export function migrateWorkspaceSlots(workspaces: WorkspaceProjectSlot[]) {
+  const currentDemo = createWorkspaceSlots()[0]
+  return workspaces.map((workspace) => (isLegacyDemoWorkspace(workspace) ? currentDemo : workspace))
 }
 
 function updateActiveWorkspace(state: WorkspaceStore, patch: Partial<WorkspaceProjectSlot>) {
@@ -153,6 +198,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
       if (!workspace) return state
       return {
         activeWorkspaceId: workspace.id,
+        workspaceMode: "director",
         nodes: workspace.nodes,
         edges: workspace.edges,
         viewport: workspace.viewport,
@@ -232,14 +278,5 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   setWorkspaceMode: (workspaceMode) => set((state) => ({
     workspaceMode,
     workspaces: state.workspaces.map((workspace) => (workspace.id === state.activeWorkspaceId ? { ...workspace, mode: workspaceMode } : workspace))
-  })),
-  setAmateurWorkflow: (patch) => set((state) => {
-    const active = state.workspaces.find((workspace) => workspace.id === state.activeWorkspaceId)
-    const amateur = { ...active?.amateur, ...patch } as AmateurWorkflowState
-    return {
-      workspaces: state.workspaces.map((workspace) => (workspace.id === state.activeWorkspaceId ? { ...workspace, amateur, lastAutosavedAt: sessionStamp } : workspace)),
-      saved: true,
-      lastAutosavedAt: sessionStamp
-    }
-  })
+  }))
 }))

@@ -3,6 +3,7 @@ import type { WorkspaceEdge, WorkspaceNode } from "@/lib/types"
 import { studioTabs } from "@/lib/types"
 import { getSuggestedNextNodeTypes, validateConnection } from "@/lib/workspace/graphRules"
 import { assemblePromptForNode } from "@/lib/workspace/promptAssembly"
+import { analyzeWorkspaceOutput, createWorkspaceMockAsset, getPreviewOutputNodes } from "@/lib/workspace/workflowRun"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 
 function node(id: string, type: WorkspaceNode["type"], data: WorkspaceNode["data"] = {}): WorkspaceNode {
@@ -84,7 +85,29 @@ describe("workspace prompt assembly", () => {
   it("keeps workspace as a valid studio tab", () => {
     expect(studioTabs).toContain("workspace")
     expect(studioTabs).toContain("editing")
+    expect(studioTabs).not.toContain("export")
     expect(studioTabs).not.toContain("editor")
+  })
+
+  it("uses the first available action card when an action node has not persisted a selection", () => {
+    const prompt = assemblePromptForNode("image", {
+      nodes: [node("action", "actionCard"), node("image", "imageOutput")],
+      edges: [edge("action", "image")],
+      styleCards: [],
+      characters: [],
+      actionCards: [
+        {
+          id: "action-1",
+          title: "First Beat",
+          beat: "The first visible action.",
+          subject: "Lead",
+          action: "moves first",
+          emotion: "focused"
+        }
+      ]
+    })
+
+    expect(prompt).toContain("First Beat")
   })
 })
 
@@ -92,6 +115,9 @@ describe("workspace graph rules", () => {
   it("suggests logical next nodes", () => {
     expect(getSuggestedNextNodeTypes("prompt")).toContain("imageOutput")
     expect(getSuggestedNextNodeTypes("actionCard")).toContain("prompt")
+    expect(getSuggestedNextNodeTypes("cameraConfig")).not.toContain("preview")
+    expect(getSuggestedNextNodeTypes("script")).not.toContain("preview")
+    expect(getSuggestedNextNodeTypes("combiner")).not.toContain("preview")
     expect(getSuggestedNextNodeTypes("videoOutput")).toEqual(["preview"])
     expect(getSuggestedNextNodeTypes("preview")).toEqual([])
   })
@@ -104,6 +130,117 @@ describe("workspace graph rules", () => {
     expect(validateConnection("image", "style", nodes, edges).ok).toBe(false)
     expect(validateConnection("style", "prompt", nodes, edges).ok).toBe(true)
     expect(validateConnection("image", "prompt", nodes, edges).ok).toBe(false)
+  })
+})
+
+describe("workspace output analysis", () => {
+  const styleCard = {
+    id: "style-1",
+    name: "Neo Noir",
+    description: "Rain and neon",
+    mood: "tense",
+    palette: ["cyan", "amber"],
+    keywords: [],
+    referenceImages: [],
+    generatedImages: []
+  }
+  const character = {
+    id: "char-1",
+    name: "Mara",
+    role: "Detective",
+    description: "Quiet and watchful",
+    emotions: [],
+    portraitUrls: [],
+    styleCardIds: []
+  }
+  const actionCard = {
+    id: "action-1",
+    title: "Door Pause",
+    beat: "The detective stops before entering.",
+    subject: "Mara",
+    action: "hesitates at the threshold",
+    emotion: "uneasy"
+  }
+
+  it("blocks output runs when no creative instruction reaches the node", () => {
+    const result = analyzeWorkspaceOutput("image", {
+      nodes: [node("image", "imageOutput")],
+      edges: [],
+      styleCards: [],
+      characters: [],
+      actionCards: []
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.blockers.join(" ")).toContain("Prompt")
+  })
+
+  it("accepts a complete image generation chain", () => {
+    const nodes = [
+      node("style", "styleCard", { styleCardId: "style-1" }),
+      node("character", "character", { characterId: "char-1" }),
+      node("action", "actionCard", { actionCardId: "action-1" }),
+      node("camera", "cameraConfig", { camera: { lens: "35mm", movement: "dolly", angle: "eye-level", aperture: "f/2.8", fps: 24 } }),
+      node("prompt", "prompt", { prompt: "A tense doorway reveal." }),
+      node("image", "imageOutput")
+    ]
+    const result = analyzeWorkspaceOutput("image", {
+      nodes,
+      edges: [edge("style", "prompt"), edge("character", "prompt"), edge("action", "prompt"), edge("prompt", "image"), edge("camera", "image")],
+      styleCards: [styleCard],
+      characters: [character],
+      actionCards: [actionCard]
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.compiledPrompt).toContain("A tense doorway reveal.")
+    expect(result.compiledPrompt).toContain("Door Pause")
+  })
+
+  it("requires a direct image source to be run before image-to-video", () => {
+    const nodes = [
+      node("prompt", "prompt", { prompt: "Turn the keyframe into a slow push-in." }),
+      node("image", "imageOutput"),
+      node("video", "videoOutput")
+    ]
+    const blocked = analyzeWorkspaceOutput("video", {
+      nodes,
+      edges: [edge("prompt", "image"), edge("image", "video")],
+      styleCards: [],
+      characters: [],
+      actionCards: []
+    })
+
+    expect(blocked.ok).toBe(false)
+    expect(blocked.blockers.join(" ")).toContain("Image Output")
+
+    const ready = analyzeWorkspaceOutput("video", {
+      nodes: nodes.map((item) => (item.id === "image" ? { ...item, data: { ...item.data, assetId: "asset-image" } } : item)),
+      edges: [edge("prompt", "image"), edge("image", "video")],
+      styleCards: [],
+      characters: [],
+      actionCards: []
+    })
+
+    expect(ready.ok).toBe(true)
+  })
+
+  it("creates lightweight workspace assets and previews direct output links", () => {
+    const imageNode = node("image", "imageOutput", { label: "Generated Frame" })
+    const videoNode = node("video", "videoOutput", { label: "Generated Clip" })
+    const previewNode = node("preview", "preview")
+    const asset = createWorkspaceMockAsset({
+      node: imageNode,
+      projectId: "project-1",
+      compiledPrompt: "A cinematic frame.",
+      mediaType: "imageOutput"
+    })
+    const outputs = getPreviewOutputNodes("preview", [imageNode, videoNode, previewNode], [edge("image", "video"), edge("video", "preview")])
+
+    expect(asset.source).toBe("workspace")
+    expect(asset.type).toBe("image")
+    expect(asset.thumbnailUrl).toContain("data:image/svg+xml")
+    expect(outputs.map((item) => item.id)).toEqual(["video"])
   })
 })
 

@@ -1,2 +1,0 @@
-import{n as e}from"./rolldown-runtime-DDYO_63t.js";import{n as t,t as n}from"./feature-effects-6TEvRsed.js";var r=e({EffectsSection:()=>n,prewarmEffectPreviews:()=>t});export{r as t};
-//# sourceMappingURL=effects-contract-Cr7cyM28.js.map

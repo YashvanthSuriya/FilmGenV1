@@ -1,2 +1,0 @@
-import{n as e}from"./rolldown-runtime-DDYO_63t.js";import{d as t,f as n,p as r,u as i,y as a}from"./app-shell-DM7GQNzJ.js";function o(e){if(!e)return;let t=a.getState().mediaById[e];if(t){if(t.mimeType.startsWith(`video/`))return t.audioCodec;if(t.mimeType.startsWith(`audio/`))return t.codec}}var s=e({cleanupBlobUrls:()=>i,getMediaAudioCodecById:()=>o,resolveMediaUrl:()=>t,resolveMediaUrls:()=>n,resolveProxyUrl:()=>r});export{o as n,s as t};
-//# sourceMappingURL=media-library-8PxvMlPC.js.map

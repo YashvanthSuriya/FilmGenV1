@@ -19,6 +19,9 @@
   --text-secondary: #9a9a9a;
   --text-muted: #626262;
   --text-disabled: #3f3f3f;
+  --color-card: rgba(255, 255, 255, 0.055);
+  --color-foreground: var(--text-primary);
+  --color-muted-foreground: var(--text-secondary);
   --accent-cyan: #00E5FF;
   --accent-cyan-dim: rgba(0, 229, 255, 0.15);
   --accent-cyan-soft: rgba(0, 229, 255, 0.08);

@@ -28,7 +28,7 @@ export interface GenerationJobStub {
   createdAt: number
 }
 
-export const studioTabs = ["storyboard", "workspace", "editing", "gallery", "challenges", "export"] as const
+export const studioTabs = ["storyboard", "workspace", "editing", "gallery", "challenges"] as const
 
 export type StudioTab = (typeof studioTabs)[number]
 export type WorkspaceNodeType =
@@ -58,7 +58,7 @@ export type AudioGenre = "Cinematic" | "Electronic" | "Jazz" | "Acoustic" | "Amb
 export type AudioIntensity = "Calm" | "Moderate" | "Intense"
 export type SfxCategory = "Ambient" | "Foley" | "Music" | "Transitions" | "Nature" | "UI" | "Weather" | "Urban" | "Interior" | "Sci-Fi"
 export type TextOverlayAnimation = "None" | "Fade" | "Slide In" | "Typewriter" | "Glow"
-export type WorkspaceMode = "amateur" | "director"
+export type WorkspaceMode = "director"
 export type ProjectSyncStatus = "local" | "queued" | "synced" | "error"
 export type EditorToolWindow = "inspector" | "color" | "audio" | null
 
@@ -84,17 +84,6 @@ export interface Character {
   styleCardIds: string[]
 }
 
-export interface StoryboardFrame {
-  id: string
-  title: string
-  prompt: string
-  shotType: string
-  cameraMovement: string
-  aspectRatio: "16:9" | "9:16"
-  referenceImages: string[]
-  imageUrl?: string
-}
-
 export interface ActionCard {
   id: string
   title: string
@@ -104,14 +93,80 @@ export interface ActionCard {
   emotion: string
 }
 
-export interface StoryboardStitch {
+export type TemplateCategory = "Cinematic" | "Character" | "Concept" | "Environment"
+export type GenerationMode = "image" | "video"
+export type GenerationCardType = "style" | "storyboard" | "character" | "none"
+export type GenerationLibraryType = Exclude<GenerationCardType, "none">
+export type GenerationAspectRatio = "1:1" | "16:9" | "9:16" | "21:9"
+export type ImageGenerationModel = "nanobanana-2" | "gpt-image-2"
+export type VideoGenerationModel = "seedance-2" | "seedance-2-pro"
+export type VideoGenerationSize = "480p" | "720p" | "1080p"
+export type VideoDurationSeconds = 5 | 10 | 15
+
+export interface Template {
   id: string
-  frameIds: string[]
-  title: string
+  name: string
+  description: string
+  guidanceSummary: string
+  category: TemplateCategory
+  cardType: GenerationLibraryType
+  preview: string
   imageUrl: string
-  feedback: string
-  promptPayload: string
+  examples: string[]
+}
+
+export interface GenerationReferenceImage {
+  id: string
+  name: string
+  src: string
+  size: number
+  type: string
+}
+
+export interface GenerationAppliedCard {
+  id: string
+  type: GenerationLibraryType
+  name: string
+}
+
+export interface GenerationResult {
+  id: string
+  projectId: string
+  mediaType: GenerationMode
+  prompt: string
+  templateId?: string
+  templateName?: string
+  cardType: GenerationCardType
+  referenceImages: GenerationReferenceImage[]
+  aspectRatio: GenerationAspectRatio
+  model: ImageGenerationModel | VideoGenerationModel
+  videoSize?: VideoGenerationSize
+  durationSeconds?: VideoDurationSeconds
+  appliedCards?: GenerationAppliedCard[]
+  creditCost: number
+  imageUrl: string
+  videoUrl?: string
+  favorite?: boolean
   createdAt: string
+}
+
+export interface UserCardImage {
+  id: string
+  generationId: string
+  imageUrl: string
+  prompt: string
+  createdAt: string
+}
+
+export interface UserCard {
+  id: string
+  projectId: string
+  type: GenerationLibraryType
+  name: string
+  description: string
+  images: UserCardImage[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface WorkspaceNodeData extends Record<string, unknown> {
@@ -126,6 +181,10 @@ export interface WorkspaceNodeData extends Record<string, unknown> {
   pinned?: boolean
   output?: string
   previewUrl?: string
+  compiledPrompt?: string
+  lastRunAt?: string
+  assetId?: string
+  errorMessage?: string
   storyboardFrameId?: string
   sourcePrompt?: string
   aspectRatio?: "16:9" | "9:16"
@@ -143,29 +202,10 @@ export interface WorkspaceProjectSlot {
   id: string
   name: string
   mode?: WorkspaceMode
-  amateur?: AmateurWorkflowState
   nodes: WorkspaceNode[]
   edges: WorkspaceEdge[]
   viewport: { x: number; y: number; zoom: number }
   lastAutosavedAt: string | null
-}
-
-export interface AmateurWorkflowState {
-  styleCardId?: string
-  actionCardId?: string
-  camera: CameraConfig
-  prompt: string
-  outputType: "image" | "video"
-  model?: "seedance-2" | "kling" | "ray-3-14" | "modify"
-  duration?: 5 | 10 | 15
-  quality?: "480p" | "720p" | "1080p"
-  references?: Array<{
-    id: string
-    type: "image" | "video"
-    name: string
-    src: string
-  }>
-  previewUrl?: string
 }
 
 export interface ProjectAsset {
@@ -196,8 +236,6 @@ export interface ProjectSlot {
   styleCards: StyleCard[]
   characters: Character[]
   actionCards: ActionCard[]
-  storyboardFrames: StoryboardFrame[]
-  storyboardStitches: StoryboardStitch[]
   assets: ProjectAsset[]
   cameraConfig: CameraConfig
   editingState: EditingState

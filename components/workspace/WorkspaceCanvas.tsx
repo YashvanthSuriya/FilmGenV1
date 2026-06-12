@@ -16,8 +16,7 @@ import {
   type EdgeMouseHandler,
   type NodeChange
 } from "@xyflow/react"
-import { Check, Copy, Crosshair, Eraser, Link2Off, MousePointer2, Pin, Trash2, type LucideIcon } from "lucide-react"
-import { AmateurWorkspace } from "@/components/workspace/AmateurWorkspace"
+import { Check, Copy, Crosshair, Eraser, LayoutTemplate, Link2Off, MousePointer2, Pin, Trash2, type LucideIcon } from "lucide-react"
 import { CustomEdge } from "@/components/workspace/CustomEdge"
 import { NodePalette, workspaceTools } from "@/components/workspace/NodePalette"
 import { PropertiesPanel } from "@/components/workspace/PropertiesPanel"
@@ -31,10 +30,11 @@ import { PromptNode } from "@/components/workspace/nodes/PromptNode"
 import { ScriptNode } from "@/components/workspace/nodes/ScriptNode"
 import { StyleCardNode } from "@/components/workspace/nodes/StyleCardNode"
 import { VideoOutputNode } from "@/components/workspace/nodes/VideoOutputNode"
-import { useWorkspaceStore } from "@/lib/stores/workspace"
 import { useProjectStore } from "@/lib/stores/project"
+import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { WorkspaceEdge, WorkspaceNode, WorkspaceNodeType } from "@/lib/types"
 import { getSuggestedNextNodeTypes, validateConnection } from "@/lib/workspace/graphRules"
+import { buildWorkflowTemplate, workflowTemplates, type WorkflowTemplateId } from "@/lib/workspace/workflowTemplates"
 
 const nodeTypes = {
   styleCard: StyleCardNode,
@@ -85,8 +85,6 @@ function WorkspaceCanvasInner() {
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const saved = useWorkspaceStore((state) => state.saved)
   const lastAutosavedAt = useWorkspaceStore((state) => state.lastAutosavedAt)
-  const workspaceMode = useWorkspaceStore((state) => state.workspaceMode)
-  const setWorkspaceMode = useProjectStore((state) => state.setWorkspaceMode)
   const setNodes = useWorkspaceStore((state) => state.setNodes)
   const setEdges = useWorkspaceStore((state) => state.setEdges)
   const addNode = useWorkspaceStore((state) => state.addNode)
@@ -97,11 +95,14 @@ function WorkspaceCanvasInner() {
   const setViewport = useWorkspaceStore((state) => state.setViewport)
   const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace)
   const clearWorkspace = useWorkspaceStore((state) => state.clearWorkspace)
-  const setAmateurWorkflow = useWorkspaceStore((state) => state.setAmateurWorkflow)
+  const styleCards = useProjectStore((state) => state.styleCards)
+  const characters = useProjectStore((state) => state.characters)
+  const actionCards = useProjectStore((state) => state.actionCards)
   const [menu, setMenu] = useState<ContextMenuState>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [hideSuggestionsForNode, setHideSuggestionsForNode] = useState<string | null>(null)
   const [expandedSuggestionsForNode, setExpandedSuggestionsForNode] = useState<string | null>(null)
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false)
   const lastSavedLabel = useMemo(() => {
     if (!lastAutosavedAt) return "Session edits are not persisted"
     if (lastAutosavedAt === "Session only") return lastAutosavedAt
@@ -200,8 +201,16 @@ function WorkspaceCanvasInner() {
     setMenu(null)
   }
 
-  if (workspaceMode === "amateur") {
-    return <AmateurWorkspace onModeChange={setWorkspaceMode} onAmateurChange={setAmateurWorkflow} />
+  function applyTemplate(templateId: WorkflowTemplateId) {
+    if (nodes.length > 0 && !window.confirm("Replace the current workspace with this starter workflow?")) return
+    const template = buildWorkflowTemplate(templateId, { styleCards, characters, actionCards })
+    setNodes(template.nodes)
+    setEdges(template.edges)
+    setViewport(template.viewport)
+    selectNode(template.nodes[0]?.id ?? null)
+    setTemplateMenuOpen(false)
+    setConnectionError(null)
+    window.setTimeout(() => fitView({ padding: 0.25, maxZoom: 0.85 }), 0)
   }
 
   return (
@@ -209,7 +218,35 @@ function WorkspaceCanvasInner() {
       <NodePalette onAddNode={(type) => createNode(type)} />
       <main className="relative min-w-0 flex-1">
         <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-2 shadow-md">
-          <WorkspaceModeSwitch mode="director" onChange={setWorkspaceMode} />
+          <span className="h-9 rounded-full border border-border-subtle bg-background/80 px-3 pt-2 font-heading text-[10px] font-semibold uppercase tracking-[0.08em] text-accent-cyan shadow-md backdrop-blur">
+            Director Workspace
+          </span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setTemplateMenuOpen((open) => !open)}
+              className="flex h-9 items-center gap-2 rounded px-3 text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary hover:bg-elevated hover:text-accent-cyan"
+              aria-expanded={templateMenuOpen}
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Templates
+            </button>
+            {templateMenuOpen ? (
+              <div className="absolute left-0 top-11 w-72 rounded-[var(--radius-md)] border border-border bg-overlay p-2 text-sm text-text-secondary shadow-lg">
+                {workflowTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template.id)}
+                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
+                  >
+                    <span className="block font-heading text-xs font-semibold uppercase tracking-[0.08em] text-accent-cyan">{template.name}</span>
+                    <span className="mt-1 block text-xs leading-5 text-text-muted">{template.description}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button type="button" onClick={() => fitView({ padding: 0.2 })} className="grid h-9 w-9 place-items-center rounded text-text-secondary hover:bg-elevated hover:text-accent-cyan" aria-label="Fit view">
             <Crosshair className="h-4 w-4" />
           </button>
@@ -293,18 +330,6 @@ function WorkspaceCanvasInner() {
         <ContextMenu menu={menu} onAddNode={createNode} onFitView={() => fitView({ padding: 0.2 })} onSelectAll={selectAll} onDuplicate={duplicateSelected} onDelete={deleteSelected} onPin={pinNode} onDisconnect={disconnectEdge} />
         <PropertiesPanel />
       </main>
-    </div>
-  )
-}
-
-function WorkspaceModeSwitch({ mode, onChange }: { mode: "amateur" | "director"; onChange: (mode: "amateur" | "director") => void }) {
-  return (
-    <div className="flex rounded-full border border-border-subtle bg-background/80 p-1 shadow-md backdrop-blur">
-      {(["amateur", "director"] as const).map((item) => (
-        <button key={item} type="button" onClick={() => onChange(item)} className={`h-8 rounded-full px-3 font-heading text-[10px] font-semibold uppercase tracking-[0.08em] ${mode === item ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:text-text-primary"}`}>
-          {item}
-        </button>
-      ))}
     </div>
   )
 }

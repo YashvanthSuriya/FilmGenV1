@@ -70,6 +70,33 @@ export function PropertiesPanel() {
                 className="min-h-28 w-full resize-none rounded-[var(--radius-md)] border border-border bg-elevated p-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
             </div>
+            {selectedNode.data.errorMessage ? (
+              <div className="space-y-2">
+                <Label>Error</Label>
+                <div className="rounded-[var(--radius-md)] border border-accent-red/40 bg-accent-red-dim px-3 py-2 text-sm text-accent-red">
+                  {selectedNode.data.errorMessage}
+                </div>
+              </div>
+            ) : null}
+            {selectedNode.data.compiledPrompt ? (
+              <div className="space-y-2">
+                <Label>Compiled Prompt</Label>
+                <textarea
+                  value={selectedNode.data.compiledPrompt}
+                  readOnly
+                  className="min-h-36 w-full resize-none rounded-[var(--radius-md)] border border-border bg-background p-3 text-sm text-text-secondary outline-none"
+                />
+              </div>
+            ) : null}
+            {selectedNode.data.assetId ? (
+              <div className="space-y-2">
+                <Label>Generated Asset</Label>
+                <div className="space-y-1 rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
+                  <p className="break-all">{selectedNode.data.assetId}</p>
+                  {selectedNode.data.lastRunAt ? <p className="text-xs text-text-muted">{selectedNode.data.lastRunAt}</p> : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

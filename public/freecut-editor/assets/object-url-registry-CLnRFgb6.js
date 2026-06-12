@@ -1,2 +1,0 @@
-const e=new Map;function t(t,n,r){e.set(t,{blob:n,metadata:r})}function n(t){return e.get(t)?.blob??null}function r(t){return e.get(t)?.metadata??null}function i(t){let n=e.get(t)?.metadata;return n?.opfsPath?{storageType:`opfs`,opfsPath:n.opfsPath,fileSize:n.fileSize}:null}function a(t){e.delete(t)}export{a,t as i,i as n,r,n as t};
-//# sourceMappingURL=object-url-registry-CLnRFgb6.js.map

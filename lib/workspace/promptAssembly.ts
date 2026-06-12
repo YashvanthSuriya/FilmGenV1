@@ -44,8 +44,9 @@ export function assemblePromptForNode(nodeId: string, context: PromptAssemblyCon
       if (character) parts.push(`Character: ${character.name}, ${character.role}. ${character.description}.`)
     }
 
-    if (node.type === "actionCard" && node.data.actionCardId) {
-      const action = context.actionCards?.find((item) => item.id === node.data.actionCardId)
+    if (node.type === "actionCard") {
+      const actionCardId = node.data.actionCardId ?? context.actionCards?.[0]?.id
+      const action = context.actionCards?.find((item) => item.id === actionCardId)
       if (action) parts.push(`Action: ${action.title}. Beat: ${action.beat}. Subject: ${action.subject}. Action: ${action.action}. Emotion: ${action.emotion}.`)
     }
 
@@ -59,6 +60,11 @@ export function assemblePromptForNode(nodeId: string, context: PromptAssemblyCon
 
     if (node.type === "script" && node.data.script) {
       parts.push(`Script: ${node.data.script}`)
+    }
+
+    if (node.type === "imageOutput" && node.id !== nodeId) {
+      if (node.data.compiledPrompt) parts.push(`Source image context: ${node.data.compiledPrompt}`)
+      if (node.data.output) parts.push(`Source image output: ${node.data.output}`)
     }
   })
 

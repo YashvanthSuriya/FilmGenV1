@@ -1,35 +1,20 @@
-# Workspace Modes And Local Project Memory
+# Director Workspace And Local Project Memory
 
-FilmGen has two workspace modes: Amateur and Director. Both modes are stored per local project, and each user can keep up to five projects in their browser.
+FilmGen now uses a single Director workspace in the Workspace tab. The previous Amateur mode has been retired because its guided generation workflow is covered by the Storyboard image/video generation surface.
 
 ## Local Project Memory
 
 Project memory is stored locally in the browser so it does not create server or database costs for the app owner.
 
-- Project metadata, storyboard data, workspace graphs, and editor state are saved in local browser storage.
+- Project metadata, Storyboard v2 generation data, Director workspace graphs, and editor state are saved in local browser storage.
 - Imported image, video, and audio blobs are saved in IndexedDB.
-- Memory is isolated per project: switching projects restores that project storyboard, workspace, assets, and timeline.
+- Memory is isolated per project: switching projects restores that project Storyboard v2 generations/cards, Director workspace graph, assets, and timeline.
 - The limit is five local projects.
 - This memory is not cloud synced. A different browser, device, or cleared browser storage will not have the same projects.
 
-## Amateur Mode
+## Director Workspace
 
-Amateur mode is a guided linear workflow for users who do not want to think in node graphs.
-
-The workflow is:
-
-1. Style Card
-2. Action Card
-3. Camera
-4. Prompt
-5. Image or Video Output
-6. Preview / Send to Editor
-
-The user chooses a style card, picks the action/beat, reviews the camera setup, writes the shot prompt, chooses image or video, then sends the prepared output into the editor. The mode intentionally keeps the screen simple and avoids freeform connections.
-
-## Director Mode
-
-Director mode is the freeform node editor. It is for users who want precise control over how story, style, character, camera, prompt, script, image, video, and preview nodes connect.
+Director workspace is the freeform node editor. It is for users who want precise control over how story, style, character, camera, prompt, script, image, video, and preview nodes connect.
 
 Director nodes:
 
@@ -39,10 +24,19 @@ Director nodes:
 - Camera: lens, movement, angle, aperture, and fps.
 - Prompt: shot prompt text.
 - Script: dialogue, narration, or story text.
-- Combiner: merges upstream creative inputs.
-- Image Output: still-frame generation target.
-- Video Output: motion-generation target.
-- Preview: final review node for assembled output notes.
+- Shot Builder: merges upstream creative inputs before a generation target.
+- Image Output: still-frame generation target with local mock run, generated asset preview, download, and send-to-Editing actions.
+- Video Output: motion-generation target with local mock run, poster preview, and send-to-Editing actions. If a direct Image Output feeds it, that image must be run first.
+- Preview: terminal sequence review node that collects directly connected Image/Video Output nodes and can append ready assets to Editing.
+
+Starter templates are available from the Director toolbar:
+
+- Single Shot
+- Image to Video
+- Three Shot Scene
+- Character Scene
+
+These templates create complete runnable graphs instead of decorative demo layouts.
 
 ## Director Node Connections
 
@@ -52,9 +46,9 @@ Allowed connection flow:
 - Action Card can feed Camera, Prompt, Combiner, Image Output, or Video Output.
 - Character can feed Action Card, Prompt, Combiner, Image Output, or Video Output.
 - Prompt can feed Camera, Combiner, Image Output, Video Output, or Script.
-- Camera can feed Combiner, Image Output, Video Output, or Preview.
-- Script can feed Prompt, Combiner, Video Output, or Preview.
-- Combiner can feed Image Output, Video Output, or Preview.
+- Camera can feed Shot Builder, Image Output, or Video Output.
+- Script can feed Prompt, Shot Builder, or Video Output.
+- Shot Builder can feed Image Output or Video Output.
 - Image Output can feed Video Output or Preview.
 - Video Output can feed Preview.
 - Preview is terminal.
@@ -74,14 +68,26 @@ Prompt assembly walks upstream from the selected output node and gathers connect
 
 This lets directors build complex prompts by connecting only the creative inputs that should influence a specific output.
 
-## Storyboard Stitching
+## Local Director Runs
 
-Storyboard stitching creates a local contact sheet from selected shots. The stitch workflow preserves shot order and stores a provider-ready prompt payload for a future image-generation adapter such as NanoBanana 2.
+Director output nodes now run a fast local mock generation for workflow validation:
+
+- The output node gathers upstream cards, characters, actions, camera settings, prompts, scripts, and source image context.
+- The graph analyzer blocks empty/illogical runs, such as output nodes with no creative input, unselected connected card nodes, or video nodes that depend on an image output that has not been run yet.
+- A successful run creates a lightweight `source: "workspace"` project asset, stores the assembled prompt on the node, renders a poster/thumbnail, and records `assetId` plus `lastRunAt`.
+- Ready assets can be appended to the Editing timeline from the output node or from the Preview node.
+- This is still local prototype behavior. Real provider execution must remain server/worker-side in the backend generation phase.
+
+## Storyboard Image Generation Interface
+
+The Storyboard tab is now the local-first image generation surface for visual development.
 
 Current behavior:
 
-- Selected storyboard shots are assembled into a local contact sheet.
-- User feedback is included as prompt guidance.
-- The generated prompt payload is saved with the stitch.
-- The stitch is saved as an image asset for the editor.
+- Users write a prompt, optionally select a built-in visual template, attach PNG/JPEG/WebP reference images, choose a card type, aspect ratio, and model.
+- Built-in templates are optional inspiration. Selecting one updates the target card type and sends only the template ID to the API; provider prompt guidance is resolved server-side at runtime.
+- Generate calls `POST /api/generate/image`, shows a loading overlay, and then saves a local simulated image result into the generation gallery.
+- The API route validates auth, applies strict Zod validation, sanitizes the prompt, rate-limits locally at 3 requests per minute, validates reference images, resolves template guidance server-side from `templateId`, and returns a 501 stub until backend generation is wired.
+- Generated images can be downloaded, deleted, selected, opened in a detail modal, or saved into My Style Cards, My Storyboards, or My Character Sheets.
+- Storyboard v2 state persists with Zustand under `filmgen-storyboard-v2` and is keyed by project ID.
 - No paid AI call runs in this implementation.

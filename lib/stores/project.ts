@@ -16,15 +16,13 @@ import type {
   ProjectAsset,
   ProjectAssetType,
   ProjectSlot,
-  StoryboardFrame,
-  StoryboardStitch,
   StudioTab,
   StyleCard,
   TextOverlayClip,
   TimelineClip,
   TimelineTransitionType
 } from "@/lib/types"
-import { useWorkspaceStore } from "@/lib/stores/workspace"
+import { migrateWorkspaceSlots, useWorkspaceStore } from "@/lib/stores/workspace"
 import { projectRepository } from "@/lib/stores/projectRepository"
 import { applyTransition, removeTransition } from "@/lib/editor/transitions"
 import {
@@ -53,8 +51,6 @@ export interface ProjectStore {
   styleCards: StyleCard[]
   characters: Character[]
   actionCards: ActionCard[]
-  storyboardFrames: StoryboardFrame[]
-  storyboardStitches: StoryboardStitch[]
   assets: ProjectAsset[]
   cameraConfig: CameraConfig
   editingState: EditingState
@@ -74,12 +70,6 @@ export interface ProjectStore {
   setProjectName: (name: string) => void
   addStyleCard: (styleCard: StyleCard) => void
   addCharacter: (character: Character) => void
-  addStoryboardFrames: (frames: StoryboardFrame[]) => void
-  updateStoryboardFrame: (id: string, frame: Partial<StoryboardFrame>) => void
-  duplicateStoryboardFrame: (id: string) => void
-  deleteStoryboardFrame: (id: string) => void
-  createStoryboardStitch: (input: { frameIds: string[]; title: string; feedback: string }) => StoryboardStitch | null
-  updateStoryboardStitchFeedback: (stitchId: string, feedback: string) => void
   importAsset: (asset: ProjectAsset) => void
   addAssetToTimeline: (assetId: string, trackId?: string, start?: number) => void
   addMediaClipToTimeline: (media: GeneratedTimelineMedia, trackId?: string, start?: number) => void
@@ -203,38 +193,10 @@ export const demoActionCards: ActionCard[] = [
   }
 ]
 
-export const demoStoryboardFrames: StoryboardFrame[] = [
-  {
-    id: "shot-market-reveal",
-    title: "Market Reveal",
-    prompt: "A wide shot reveals Mira crossing a flooded night market while search drones rake light over the crowd.",
-    shotType: "Wide",
-    cameraMovement: "Dolly",
-    aspectRatio: "16:9",
-    referenceImages: [demoStyleCards[0].generatedImages[0]],
-    imageUrl: "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(7,8,13,0.96) 46%, rgba(255,184,0,0.16))"
-  },
-  {
-    id: "shot-close-listen",
-    title: "Signal Close-Up",
-    prompt: "Close on Mira as a hidden earpiece flickers blue and she realizes the message is coming from inside the market.",
-    shotType: "Close-up",
-    cameraMovement: "Static",
-    aspectRatio: "16:9",
-    referenceImages: [demoCharacters[0].portraitUrls[0]],
-    imageUrl: "linear-gradient(135deg, rgba(155,89,255,0.2), rgba(3,5,10,0.96), rgba(0,229,255,0.2))"
-  },
-  {
-    id: "shot-rooftop-choice",
-    title: "Rooftop Choice",
-    prompt: "A quiet rooftop beat where Mira looks over the glowing city and decides whether to run or expose the signal.",
-    shotType: "Medium",
-    cameraMovement: "Pan",
-    aspectRatio: "16:9",
-    referenceImages: [],
-    imageUrl: "linear-gradient(135deg, rgba(255,184,0,0.18), rgba(9,11,18,0.94), rgba(0,229,255,0.18))"
-  }
-]
+const demoMarketRevealPrompt = "A wide shot reveals Mira crossing a flooded night market while search drones rake light over the crowd."
+const demoSignalCloseupPrompt = "Close on Mira as a hidden earpiece flickers blue and she realizes the message is coming from inside the market."
+const demoMarketRevealImage = "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(7,8,13,0.96) 46%, rgba(255,184,0,0.16))"
+const demoSignalCloseupImage = "linear-gradient(135deg, rgba(155,89,255,0.2), rgba(3,5,10,0.96), rgba(0,229,255,0.2))"
 
 export const demoAssets: ProjectAsset[] = [
   {
@@ -242,24 +204,22 @@ export const demoAssets: ProjectAsset[] = [
     source: "storyboard",
     type: "image",
     name: "Market Reveal",
-    prompt: demoStoryboardFrames[0].prompt,
-    url: demoStoryboardFrames[0].imageUrl,
-    thumbnailUrl: demoStoryboardFrames[0].imageUrl,
+    prompt: demoMarketRevealPrompt,
+    url: demoMarketRevealImage,
+    thumbnailUrl: demoMarketRevealImage,
     duration: 5,
-    createdAt: demoDate,
-    storyboardFrameId: "shot-market-reveal"
+    createdAt: demoDate
   },
   {
     id: "asset-signal-closeup",
     source: "storyboard",
     type: "image",
     name: "Signal Close-Up",
-    prompt: demoStoryboardFrames[1].prompt,
-    url: demoStoryboardFrames[1].imageUrl,
-    thumbnailUrl: demoStoryboardFrames[1].imageUrl,
+    prompt: demoSignalCloseupPrompt,
+    url: demoSignalCloseupImage,
+    thumbnailUrl: demoSignalCloseupImage,
     duration: 4,
-    createdAt: demoDate,
-    storyboardFrameId: "shot-close-listen"
+    createdAt: demoDate
   },
   {
     id: "asset-city-bed",
@@ -352,12 +312,12 @@ function readWorkspaceMemory(): ProjectSlot["workspaceMemory"] {
   }
 }
 
-function applyWorkspaceMemory(memory: ProjectSlot["workspaceMemory"], mode: ProjectSlot["workspaceMode"]) {
+function applyWorkspaceMemory(memory: ProjectSlot["workspaceMemory"]) {
   const workspace = useWorkspaceStore.getState()
-  const workspaces = memory.workspaces.length > 0 ? memory.workspaces : workspace.workspaces
+  const workspaces = migrateWorkspaceSlots(memory.workspaces.length > 0 ? memory.workspaces : workspace.workspaces)
   const activeWorkspace = workspaces.find((item) => item.id === memory.activeWorkspaceId) ?? workspaces[0]
   useWorkspaceStore.setState({
-    workspaceMode: mode,
+    workspaceMode: "director",
     activeWorkspaceId: activeWorkspace?.id ?? "workspace-1",
     workspaces,
     nodes: activeWorkspace?.nodes ?? memory.nodes,
@@ -380,9 +340,8 @@ function normalizeProjectSlot(project: ProjectSlot, index = 0): ProjectSlot {
     version: project.version ?? 1,
     syncStatus: project.syncStatus ?? "local",
     actionCards: project.actionCards ?? [],
-    storyboardStitches: project.storyboardStitches ?? [],
     editingState: ensureEditingStateDefaults(project.editingState),
-    workspaceMode: project.workspaceMode ?? "director",
+    workspaceMode: "director",
     workspaceMemory: project.workspaceMemory ?? createDefaultWorkspaceMemory()
   }
 }
@@ -398,7 +357,7 @@ function withProjectSyncUpdate(project: ProjectSlot, patch: Partial<ProjectSlot>
   }
 }
 
-function buildProjectSlot(state: Pick<ProjectStore, "projectId" | "projectName" | "styleCards" | "characters" | "actionCards" | "storyboardFrames" | "storyboardStitches" | "assets" | "cameraConfig" | "editingState" | "workspaceMode">, previous?: ProjectSlot): ProjectSlot {
+function buildProjectSlot(state: Pick<ProjectStore, "projectId" | "projectName" | "styleCards" | "characters" | "actionCards" | "assets" | "cameraConfig" | "editingState" | "workspaceMode">, previous?: ProjectSlot): ProjectSlot {
   const base = previous ?? {
     id: state.projectId,
     projectId: state.projectId,
@@ -418,8 +377,6 @@ function buildProjectSlot(state: Pick<ProjectStore, "projectId" | "projectName" 
     styleCards: state.styleCards,
     characters: state.characters,
     actionCards: state.actionCards,
-    storyboardFrames: state.storyboardFrames,
-    storyboardStitches: state.storyboardStitches,
     assets: state.assets,
     cameraConfig: state.cameraConfig,
     editingState: state.editingState,
@@ -440,12 +397,10 @@ function createEmptyProjectSlot(index: number): ProjectSlot {
     styleCards: [],
     characters: [],
     actionCards: [],
-    storyboardFrames: [],
-    storyboardStitches: [],
     assets: [],
     cameraConfig: defaultCameraConfig,
     editingState: createInitialEditingState(),
-    workspaceMode: "amateur",
+    workspaceMode: "director",
     workspaceMemory: createDefaultWorkspaceMemory()
   }
 }
@@ -461,8 +416,6 @@ function createDemoProjectSlot(): ProjectSlot {
     styleCards: demoStyleCards,
     characters: demoCharacters,
     actionCards: demoActionCards,
-    storyboardFrames: demoStoryboardFrames,
-    storyboardStitches: [],
     assets: demoAssets,
     cameraConfig: defaultCameraConfig,
     editingState: createDemoEditingState(),
@@ -478,53 +431,6 @@ function saveProjectSlots(projects: ProjectSlot[]) {
 function loadProjectSlots() {
   const projects = projectRepository.loadProjects().map((project, index) => normalizeProjectSlot(project, index))
   return projects.length > 0 ? projects.slice(0, MAX_PROJECTS) : [createDemoProjectSlot()]
-}
-
-function stitchPromptPayload(frames: StoryboardFrame[], feedback: string) {
-  return [
-    "Provider adapter target: NanoBanana 2 compatible storyboard image generation.",
-    "Create one polished storyboard contact sheet from the ordered shots below.",
-    "Preserve shot order, continuity, character identity, camera intent, and aspect ratio notes.",
-    feedback ? `User feedback: ${feedback}` : "User feedback: keep continuity and readable storyboard panels.",
-    ...frames.map((frame, index) => `Panel ${index + 1}: ${frame.title}. ${frame.shotType}, ${frame.cameraMovement}, ${frame.aspectRatio}. ${frame.prompt}`)
-  ].join("\n")
-}
-
-function createContactSheetDataUrl(frames: StoryboardFrame[]) {
-  if (typeof document === "undefined") return "linear-gradient(135deg, rgba(0,229,255,0.2), rgba(255,184,0,0.12))"
-  const panelWidth = 320
-  const panelHeight = 240
-  const padding = 24
-  const cols = Math.min(3, Math.max(1, frames.length))
-  const rows = Math.max(1, Math.ceil(frames.length / cols))
-  const canvas = document.createElement("canvas")
-  canvas.width = padding + cols * (panelWidth + padding)
-  canvas.height = padding + rows * (panelHeight + padding)
-  const context = canvas.getContext("2d")
-  if (!context) return ""
-  context.fillStyle = "#08080d"
-  context.fillRect(0, 0, canvas.width, canvas.height)
-  frames.forEach((frame, index) => {
-    const col = index % cols
-    const row = Math.floor(index / cols)
-    const x = padding + col * (panelWidth + padding)
-    const y = padding + row * (panelHeight + padding)
-    const gradient = context.createLinearGradient(x, y, x + panelWidth, y + panelHeight)
-    gradient.addColorStop(0, "#00e5ff")
-    gradient.addColorStop(0.45, "#11131c")
-    gradient.addColorStop(1, "#ffb800")
-    context.fillStyle = gradient
-    context.fillRect(x, y, panelWidth, panelHeight)
-    context.fillStyle = "rgba(0,0,0,0.68)"
-    context.fillRect(x, y + panelHeight - 74, panelWidth, 74)
-    context.fillStyle = "#f0f0f0"
-    context.font = "bold 16px sans-serif"
-    context.fillText(`SH-${String(index + 1).padStart(2, "0")} ${frame.title}`, x + 12, y + panelHeight - 46, panelWidth - 24)
-    context.font = "12px sans-serif"
-    context.fillStyle = "#b8b8c5"
-    context.fillText(`${frame.shotType} / ${frame.cameraMovement}`, x + 12, y + panelHeight - 24, panelWidth - 24)
-  })
-  return canvas.toDataURL("image/png")
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -545,7 +451,7 @@ function selectProjectPatch(state: ProjectStore, projectId: string) {
   const savedCurrent = buildProjectSlot(state, previous)
   const projects = state.projects.map((project) => (project.id === state.activeProjectId ? savedCurrent : project))
   saveProjectSlots(projects)
-  applyWorkspaceMemory(target.workspaceMemory, target.workspaceMode)
+  applyWorkspaceMemory(target.workspaceMemory)
   return {
     activeProjectId: target.id,
     projects,
@@ -554,8 +460,6 @@ function selectProjectPatch(state: ProjectStore, projectId: string) {
     styleCards: target.styleCards,
     characters: target.characters,
     actionCards: target.actionCards ?? [],
-    storyboardFrames: target.storyboardFrames,
-    storyboardStitches: target.storyboardStitches ?? [],
     assets: target.assets,
     cameraConfig: target.cameraConfig,
     editingState: ensureEditingStateDefaults(target.editingState),
@@ -565,7 +469,7 @@ function selectProjectPatch(state: ProjectStore, projectId: string) {
   }
 }
 
-export const useProjectStore = create<ProjectStore>((set, get) => ({
+export const useProjectStore = create<ProjectStore>((set) => ({
   activeProjectId: initialProject.id,
   projects: initialProjects,
   projectId: initialProject.id,
@@ -574,8 +478,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   styleCards: initialProject.styleCards,
   characters: initialProject.characters,
   actionCards: initialProject.actionCards ?? [],
-  storyboardFrames: initialProject.storyboardFrames,
-  storyboardStitches: initialProject.storyboardStitches ?? [],
   assets: initialProject.assets,
   cameraConfig: initialProject.cameraConfig,
   editingState: ensureEditingStateDefaults(initialProject.editingState),
@@ -591,7 +493,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const nextProject = createEmptyProjectSlot(projects.length + 1)
       const nextProjects = [...projects, nextProject]
       saveProjectSlots(nextProjects)
-      applyWorkspaceMemory(nextProject.workspaceMemory, nextProject.workspaceMode)
+      applyWorkspaceMemory(nextProject.workspaceMemory)
       return {
         activeProjectId: nextProject.id,
         projects: nextProjects,
@@ -600,8 +502,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         styleCards: nextProject.styleCards,
         characters: nextProject.characters,
         actionCards: nextProject.actionCards,
-        storyboardFrames: nextProject.storyboardFrames,
-        storyboardStitches: nextProject.storyboardStitches,
         assets: nextProject.assets,
         cameraConfig: nextProject.cameraConfig,
         editingState: nextProject.editingState,
@@ -650,7 +550,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const nextProject = state.activeProjectId === projectId ? projects[0] : undefined
       saveProjectSlots(projects)
       if (!nextProject) return { projects }
-      applyWorkspaceMemory(nextProject.workspaceMemory, nextProject.workspaceMode)
+      applyWorkspaceMemory(nextProject.workspaceMemory)
       return {
         activeProjectId: nextProject.id,
         projects,
@@ -659,8 +559,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         styleCards: nextProject.styleCards,
         characters: nextProject.characters,
         actionCards: nextProject.actionCards ?? [],
-        storyboardFrames: nextProject.storyboardFrames,
-        storyboardStitches: nextProject.storyboardStitches ?? [],
         assets: nextProject.assets,
         cameraConfig: nextProject.cameraConfig,
         editingState: ensureEditingStateDefaults(nextProject.editingState),
@@ -678,72 +576,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }),
   addStyleCard: (styleCard) => set((state) => ({ styleCards: [styleCard, ...state.styleCards] })),
   addCharacter: (character) => set((state) => ({ characters: [character, ...state.characters] })),
-  addStoryboardFrames: (frames) => set((state) => ({ storyboardFrames: [...state.storyboardFrames, ...frames] })),
-  updateStoryboardFrame: (id, frame) =>
-    set((state) => ({
-      storyboardFrames: state.storyboardFrames.map((item) => (item.id === id ? { ...item, ...frame } : item))
-    })),
-  duplicateStoryboardFrame: (id) =>
-    set((state) => {
-      const source = state.storyboardFrames.find((frame) => frame.id === id)
-      if (!source) return state
-      const index = state.storyboardFrames.findIndex((frame) => frame.id === id)
-      const duplicate: StoryboardFrame = {
-        ...source,
-        id: `${source.id}-copy-${Date.now()}`,
-        title: `${source.title} Copy`
-      }
-      const next = [...state.storyboardFrames]
-      next.splice(index + 1, 0, duplicate)
-      return { storyboardFrames: next }
-    }),
-  deleteStoryboardFrame: (id) =>
-    set((state) => ({ storyboardFrames: state.storyboardFrames.filter((frame) => frame.id !== id) })),
-  createStoryboardStitch: (input) => {
-    const state = get()
-    const selectedFrames = state.storyboardFrames.filter((frame) => input.frameIds.includes(frame.id))
-    if (selectedFrames.length === 0) return null
-    const stitch: StoryboardStitch = {
-      id: `stitch-${Date.now()}`,
-      frameIds: selectedFrames.map((frame) => frame.id),
-      title: input.title.trim() || "Storyboard Stitch",
-      feedback: input.feedback,
-      imageUrl: createContactSheetDataUrl(selectedFrames),
-      promptPayload: stitchPromptPayload(selectedFrames, input.feedback),
-      createdAt: new Date().toISOString()
-    }
-    const asset: ProjectAsset = {
-      id: `asset-${stitch.id}`,
-      source: "storyboard",
-      type: "image",
-      name: stitch.title,
-      prompt: stitch.promptPayload,
-      url: stitch.imageUrl,
-      thumbnailUrl: stitch.imageUrl,
-      duration: Math.max(3, selectedFrames.length * 2),
-      createdAt: stitch.createdAt
-    }
-    set((current) => ({
-      storyboardStitches: [stitch, ...current.storyboardStitches],
-      assets: [asset, ...current.assets]
-    }))
-    return stitch
-  },
-  updateStoryboardStitchFeedback: (stitchId, feedback) =>
-    set((state) => ({
-      storyboardStitches: state.storyboardStitches.map((stitch) =>
-        stitch.id === stitchId
-          ? {
-              ...stitch,
-              feedback,
-              promptPayload: stitchPromptPayload(
-                state.storyboardFrames.filter((frame) => stitch.frameIds.includes(frame.id)),
-                feedback
-              )
-            }
-          : stitch
-      )
-    })),
   importAsset: (asset) =>
     set((state) => ({
       assets: [asset, ...state.assets.filter((item) => item.id !== asset.id)]
@@ -1154,7 +986,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 }))
 
 if (typeof window !== "undefined") {
-  applyWorkspaceMemory(initialProject.workspaceMemory, initialProject.workspaceMode ?? "director")
+  applyWorkspaceMemory(initialProject.workspaceMemory)
   useProjectStore.subscribe((state) => {
     const previous = state.projects.find((project) => project.id === state.activeProjectId)
     const currentProject = buildProjectSlot(state, previous)

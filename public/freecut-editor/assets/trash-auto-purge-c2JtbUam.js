@@ -1,2 +1,0 @@
-import{Ts as e,Yf as t,ws as n,xs as r}from"./app-shell-DM7GQNzJ.js";var i=t(`TrashAutoPurge`);async function a(t=n){try{let{permanentlyDeleteProject:n}=r.getState(),a=await e(t,async e=>{await n(e)});a.length>0&&(i.info(`Auto-purge removed ${a.length} trashed project(s) past TTL`),await r.getState().loadProjects())}catch(e){i.warn(`autoPurgeExpiredTrash failed`,e)}}export{a as autoPurgeExpiredTrash};
-//# sourceMappingURL=trash-auto-purge-c2JtbUam.js.map

@@ -1,21 +1,32 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { useProjectStore } from "@/lib/stores/project"
+import { storyboardTemplates, useStoryboardStore } from "@/lib/stores/storyboard"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
-import { studioTabs } from "@/lib/types"
+import { studioTabs, type ProjectSlot } from "@/lib/types"
 import { createInitialEditingState } from "@/lib/editor/timeline"
 
-describe("frontend demo stores", () => {
-  beforeEach(() => {
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
-      fillRect: vi.fn(),
-      fillText: vi.fn()
-    } as unknown as CanvasRenderingContext2D)
-    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,stitch")
-  })
+function projectSlot(id: string, name: string): ProjectSlot {
+  return {
+    id,
+    projectId: id,
+    name,
+    updatedAt: new Date(0).toISOString(),
+    version: 1,
+    syncStatus: "local",
+    styleCards: [],
+    characters: [],
+    actionCards: [],
+    assets: [],
+    cameraConfig: { lens: "35mm", movement: "static", angle: "eye-level", aperture: "f/2.8", fps: 24 },
+    editingState: createInitialEditingState(),
+    workspaceMode: "director",
+    workspaceMemory: { activeWorkspaceId: "workspace-1", workspaces: [], nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.85 } }
+  }
+}
 
+describe("frontend demo stores", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    useStoryboardStore.setState({ projects: {} })
   })
 
   it("seeds a presentable project demo without credits or generated media state", () => {
@@ -26,7 +37,6 @@ describe("frontend demo stores", () => {
     expect(state.styleCards.length).toBeGreaterThan(0)
     expect(state.characters.length).toBeGreaterThan(0)
     expect(state.actionCards.length).toBeGreaterThan(0)
-    expect(state.storyboardFrames.length).toBeGreaterThan(0)
     expect(state.assets.length).toBeGreaterThan(0)
     expect(state.editingState.clips.length).toBeGreaterThan(0)
     expect("credits" in state).toBe(false)
@@ -37,35 +47,16 @@ describe("frontend demo stores", () => {
     useProjectStore.setState({
       activeProjectId: "project-1",
       projects: [
-        {
-          id: "project-1",
-          projectId: "project-1",
-          name: "Project 1",
-          updatedAt: new Date(0).toISOString(),
-          version: 1,
-          syncStatus: "local",
-          styleCards: [],
-          characters: [],
-          actionCards: [],
-          storyboardFrames: [],
-          storyboardStitches: [],
-          assets: [],
-          cameraConfig: { lens: "35mm", movement: "static", angle: "eye-level", aperture: "f/2.8", fps: 24 },
-          editingState: createInitialEditingState(),
-          workspaceMode: "amateur",
-          workspaceMemory: { activeWorkspaceId: "workspace-1", workspaces: [], nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.85 } }
-        }
+        projectSlot("project-1", "Project 1")
       ],
       projectId: "project-1",
       projectName: "Project 1",
       styleCards: [],
       characters: [],
       actionCards: [],
-      storyboardFrames: [],
-      storyboardStitches: [],
       assets: [],
       editingState: createInitialEditingState(),
-      workspaceMode: "amateur"
+      workspaceMode: "director"
     })
 
     Array.from({ length: 8 }).forEach(() => useProjectStore.getState().createProject())
@@ -73,22 +64,62 @@ describe("frontend demo stores", () => {
     expect(useProjectStore.getState().projects).toHaveLength(5)
   })
 
-  it("creates a storyboard stitch payload and saves it as an image asset", () => {
-    useProjectStore.setState({
-      storyboardFrames: [
-        { id: "shot-1", title: "First", prompt: "First shot", shotType: "Wide", cameraMovement: "Static", aspectRatio: "16:9", referenceImages: [] },
-        { id: "shot-2", title: "Second", prompt: "Second shot", shotType: "Close-up", cameraMovement: "Pan", aspectRatio: "16:9", referenceImages: [] }
-      ],
-      storyboardStitches: [],
-      assets: []
+  it("creates persisted storyboard v2 generations and saves them into isolated card libraries", () => {
+    const storyboard = useStoryboardStore.getState()
+
+    storyboard.ensureProject("project-a")
+    storyboard.ensureProject("project-b")
+    storyboard.setSelectedTemplate("project-a", "cinematic-noir")
+
+    const generation = useStoryboardStore.getState().createGeneration("project-a", {
+      prompt: "A detective in an alley",
+      templateId: "cinematic-noir",
+      templateName: "Cinematic Noir",
+      cardType: "style",
+      referenceImages: [],
+      aspectRatio: "16:9",
+      model: "nanobanana-2",
+      creditCost: 3,
+      imageUrl: "data:image/png;base64,generation"
+    })
+    const card = useStoryboardStore.getState().addCardFromGenerations("project-a", {
+      type: "style",
+      name: "Noir Look",
+      description: "Rain and shadows",
+      generationIds: [generation.id]
     })
 
-    const stitch = useProjectStore.getState().createStoryboardStitch({ frameIds: ["shot-2", "shot-1"], title: "Board", feedback: "Make continuity clear." })
+    expect(storyboardTemplates).toHaveLength(5)
+    expect(storyboardTemplates[0]).not.toHaveProperty("injection")
+    expect(storyboardTemplates[0]).toHaveProperty("guidanceSummary")
+    expect(useStoryboardStore.getState().projects["project-a"].composer.cardType).toBe("style")
+    expect(useStoryboardStore.getState().projects["project-a"].generations).toHaveLength(1)
+    expect(useStoryboardStore.getState().projects["project-a"].cards.style).toHaveLength(1)
+    expect(card?.images[0]).toMatchObject({ generationId: generation.id, imageUrl: generation.imageUrl })
+    expect(useStoryboardStore.getState().projects["project-b"].generations).toEqual([])
+    expect(useStoryboardStore.getState().projects["project-b"].cards.style).toEqual([])
+  })
 
-    expect(stitch?.promptPayload).toContain("NanoBanana 2")
-    expect(stitch?.promptPayload).toContain("Make continuity clear.")
-    expect(useProjectStore.getState().storyboardStitches).toHaveLength(1)
-    expect(useProjectStore.getState().assets[0]).toMatchObject({ type: "image", name: "Board" })
+  it("stars storyboard generations and keeps mock poster placeholders compact", () => {
+    const storyboard = useStoryboardStore.getState()
+
+    storyboard.ensureProject("project-a")
+    const generation = useStoryboardStore.getState().createGeneration("project-a", {
+      prompt: "A quiet rooftop signal",
+      cardType: "storyboard",
+      referenceImages: [],
+      aspectRatio: "16:9",
+      model: "nanobanana-2",
+      creditCost: 3,
+      imageUrl: "filmgen-poster:image:storyboard:abc123"
+    })
+
+    useStoryboardStore.getState().toggleGenerationFavorite("project-a", generation.id)
+
+    const storedGeneration = useStoryboardStore.getState().projects["project-a"].generations[0]
+    expect(storedGeneration.favorite).toBe(true)
+    expect(storedGeneration.imageUrl).toMatch(/^filmgen-poster:/)
+    expect(storedGeneration.imageUrl.length).toBeLessThan(80)
   })
 
   it("imports image/video/audio assets into local project media", () => {
@@ -110,28 +141,12 @@ describe("frontend demo stores", () => {
 
   it("uses editing as the only editing tab value", () => {
     expect(studioTabs).toContain("editing")
+    expect(studioTabs).not.toContain("export")
     expect(studioTabs).not.toContain("editor")
   })
 
   it("renames projects only through explicit edit/save flow", () => {
-    const projectA = {
-      id: "project-a",
-      projectId: "project-a",
-      name: "Project A",
-      updatedAt: new Date(0).toISOString(),
-      version: 1,
-      syncStatus: "local" as const,
-      styleCards: [],
-      characters: [],
-      actionCards: [],
-      storyboardFrames: [],
-      storyboardStitches: [],
-      assets: [],
-      cameraConfig: { lens: "35mm", movement: "static", angle: "eye-level", aperture: "f/2.8", fps: 24 },
-      editingState: createInitialEditingState(),
-      workspaceMode: "amateur" as const,
-      workspaceMemory: { activeWorkspaceId: "workspace-1", workspaces: [], nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.85 } }
-    }
+    const projectA = projectSlot("project-a", "Project A")
     const projectB = { ...projectA, id: "project-b", projectId: "project-b", name: "Project B" }
     useProjectStore.setState({
       activeProjectId: "project-a",
