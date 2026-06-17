@@ -189,6 +189,17 @@ export interface WorkspaceNodeData extends Record<string, unknown> {
   sourcePrompt?: string
   aspectRatio?: "16:9" | "9:16"
   referenceImages?: string[]
+  /** Shot Builder (Combiner) only — distinct from `label`. Emitted as "Variant: <name>" in the compiled prompt. */
+  variant?: string
+  /** Manually-uploaded reference image asset IDs (for Style/Character/Action nodes).
+   *  Stored on the node so the user can attach reference images directly to a creative-input
+   *  node without going through the Storyboard. The assets themselves live in the project store. */
+  attachedImageIds?: string[]
+  /** Selected model ID (e.g. "nanobanana-2", "seedance-2"). Set on Image/Video Output nodes. */
+  modelId?: string
+  /** Model-specific parameters (e.g. { aspectRatio: "16:9" } or { videoSize: "1080p", durationSeconds: "5" }).
+   *  Keys match the `features[].key` in modelRegistry.ts. Set on Image/Video Output nodes. */
+  modelParams?: Record<string, string>
 }
 
 export interface WorkspaceEdgeData extends Record<string, unknown> {
@@ -417,10 +428,19 @@ export interface EditingState {
 }
 
 export interface CameraConfig {
+  /** Camera body type, e.g. "modular-8k-digital", "vintage-16mm". */
+  body: string
+  /** Lens type, e.g. "compact-anamorphic", "macro-prime". */
   lens: string
+  /** Focal length in mm as a string, e.g. "35", "85". */
+  focalLength: string
+  /** Camera movement, e.g. "dolly", "tracking", "locked-off", "handheld". */
   movement: string
+  /** Framing angle, e.g. "eye-level", "low-angle", "overhead". */
   angle: string
+  /** Aperture, e.g. "f/2.8". */
   aperture: string
+  /** Frame rate, e.g. 24, 25, 30. */
   fps: number
 }
 

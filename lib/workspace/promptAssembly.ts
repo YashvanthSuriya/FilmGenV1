@@ -23,7 +23,12 @@ function upstreamIds(nodeId: string, edges: WorkspaceEdge[]) {
 }
 
 function formatCamera(camera: CameraConfig) {
-  return `${camera.lens}, ${camera.movement}, ${camera.angle}, ${camera.aperture}, ${camera.fps}fps`
+  // Backward compat: if a legacy camera object slips through (lens="35mm" instead of focalLength="35"),
+  // fall back to the old fields so we never emit "undefined" in the prompt.
+  const focalLength = camera.focalLength ?? (camera.lens && camera.lens.endsWith("mm") ? camera.lens.replace(/mm$/, "") : "35")
+  const lens = camera.lens && !camera.lens.endsWith("mm") ? camera.lens : "prime"
+  const body = camera.body ?? "cinema"
+  return `${body}, ${lens} ${focalLength}mm, ${camera.movement}, ${camera.angle}, ${camera.aperture}, ${camera.fps}fps`
 }
 
 export function assemblePromptForNode(nodeId: string, context: PromptAssemblyContext) {
@@ -37,21 +42,36 @@ export function assemblePromptForNode(nodeId: string, context: PromptAssemblyCon
     if (node.type === "styleCard" && node.data.styleCardId) {
       const style = context.styleCards.find((item) => item.id === node.data.styleCardId)
       if (style) parts.push(`Style: ${style.name}. ${style.description}. Mood: ${style.mood}. Palette: ${style.palette.join(", ")}.`)
+      const refCount = node.data.attachedImageIds?.length ?? 0
+      if (refCount > 0) parts.push(`Style references: ${refCount} attached reference image${refCount === 1 ? "" : "s"}.`)
     }
 
     if (node.type === "character" && node.data.characterId) {
       const character = context.characters.find((item) => item.id === node.data.characterId)
       if (character) parts.push(`Character: ${character.name}, ${character.role}. ${character.description}.`)
+      const refCount = node.data.attachedImageIds?.length ?? 0
+      if (refCount > 0) parts.push(`Character references: ${refCount} attached reference image${refCount === 1 ? "" : "s"}.`)
     }
 
     if (node.type === "actionCard") {
       const actionCardId = node.data.actionCardId ?? context.actionCards?.[0]?.id
       const action = context.actionCards?.find((item) => item.id === actionCardId)
       if (action) parts.push(`Action: ${action.title}. Beat: ${action.beat}. Subject: ${action.subject}. Action: ${action.action}. Emotion: ${action.emotion}.`)
+      const refCount = node.data.attachedImageIds?.length ?? 0
+      if (refCount > 0) parts.push(`Action references: ${refCount} attached reference image${refCount === 1 ? "" : "s"}.`)
     }
 
     if (node.type === "cameraConfig" && node.data.camera) {
       parts.push(`Camera: ${formatCamera(node.data.camera)}`)
+    }
+
+    if (node.type === "combiner") {
+      // The combiner "freezes" a named prompt variant. The variant name is a separate field
+      // (data.variant) distinct from the node's visible label. When upstream nodes feed through
+      // a combiner, the downstream output inherits the variant tag so the model knows which
+      // version to render.
+      const variantName = String(node.data.variant ?? "").trim()
+      if (variantName) parts.push(`Variant: ${variantName}`)
     }
 
     if (node.type === "prompt" && node.data.prompt) {

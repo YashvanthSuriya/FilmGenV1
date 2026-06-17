@@ -22,11 +22,20 @@ export interface WorkspaceStore {
   updateNode: (nodeId: string, data: Partial<WorkspaceNodeData>) => void
   deleteNode: (nodeId: string) => void
   duplicateNode: (nodeId: string) => void
+  /** Duplicate a shot cluster: starting from an output node, copy it + its direct upstream Prompt/Camera/Image Output
+   *  (and any other direct upstream nodes), preserving shared upstream Style/Character/Action/Script connections.
+   *  The duplicated cluster is offset down-right on the canvas for easy visual identification. */
+  duplicateShot: (outputNodeId: string) => void
   selectNode: (nodeId: string | null) => void
   inspectNode: (nodeId: string | null) => void
   setViewport: (viewport: Viewport) => void
   setSaved: (saved: boolean) => void
   setWorkspaceMode: (mode: WorkspaceMode) => void
+  /** Set of node IDs that are collapsed (body hidden, only header visible). */
+  collapsedNodeIds: Set<string>
+  toggleNodeCollapsed: (nodeId: string) => void
+  collapseAllNodes: () => void
+  expandAllNodes: () => void
 }
 
 const sessionStamp = "Session only"
@@ -83,7 +92,9 @@ const demoNodes: WorkspaceNode[] = [
     data: {
       label: "35mm Dolly",
       camera: {
-        lens: "35mm",
+        body: "full-frame-cine",
+        lens: "compact-anamorphic",
+        focalLength: "35",
         movement: "dolly",
         angle: "eye-level",
         aperture: "f/2.8",
@@ -188,6 +199,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   viewport: { x: 0, y: 0, zoom: 0.75 },
   saved: true,
   lastAutosavedAt: sessionStamp,
+  collapsedNodeIds: new Set<string>(),
+  toggleNodeCollapsed: (nodeId) =>
+    set((state) => {
+      const next = new Set(state.collapsedNodeIds)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
+      return { collapsedNodeIds: next }
+    }),
+  collapseAllNodes: () =>
+    set((state) => ({
+      collapsedNodeIds: new Set(state.nodes.map((n) => n.id))
+    })),
+  expandAllNodes: () =>
+    set({ collapsedNodeIds: new Set<string>() }),
   setNodes: (nodes) =>
     set((state) => ({ nodes, workspaces: updateActiveWorkspace(state, { nodes, lastAutosavedAt: sessionStamp }), saved: true, lastAutosavedAt: sessionStamp })),
   setEdges: (edges) =>
@@ -269,6 +294,114 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
       }
       const nodes = [...state.nodes, duplicate]
       return { nodes, workspaces: updateActiveWorkspace(state, { nodes, lastAutosavedAt: sessionStamp }), selectedNode: duplicate.id, saved: true, lastAutosavedAt: sessionStamp }
+    }),
+  duplicateShot: (outputNodeId) =>
+    set((state) => {
+      const output = state.nodes.find((node) => node.id === outputNodeId)
+      if (!output) return state
+      // Only meaningful from an output or preview node.
+      if (output.type !== "imageOutput" && output.type !== "videoOutput" && output.type !== "preview") return state
+
+      // Cluster = the output node + its DIRECT upstream nodes (Prompt, Camera, Image Output, Action Card,
+      // Script, Combiner). Style Card, Character, Action Card and Script nodes are SHARED upstream
+      // (they typically represent reusable creative intent) — we re-link to them rather than copy them.
+      const directUpstreamEdges = state.edges.filter((edge) => edge.target === outputNodeId)
+      const directUpstreamNodes = directUpstreamEdges
+        .map((edge) => state.nodes.find((node) => node.id === edge.source))
+        .filter((node): node is WorkspaceNode => Boolean(node))
+
+      const stamp = Date.now()
+      const offsetX = 60
+      const offsetY = 80
+
+      const idMap = new Map<string, string>()
+      // Map the output node first
+      idMap.set(output.id, `${output.id}-shot-${stamp}`)
+      // Map each upstream node that we will duplicate. We duplicate Prompt, Camera, Image Output,
+      // Action Card (when used as the shot's beat), Script, Combiner — these represent per-shot intent.
+      // We do NOT duplicate Style Card or Character — those are shared.
+      const shouldCopy = (node: WorkspaceNode) =>
+        node.type === "prompt" ||
+        node.type === "cameraConfig" ||
+        node.type === "imageOutput" ||
+        node.type === "videoOutput" ||
+        node.type === "script" ||
+        node.type === "combiner" ||
+        node.type === "actionCard"
+
+      const nodesToCopy: WorkspaceNode[] = []
+      for (const upstream of directUpstreamNodes) {
+        if (shouldCopy(upstream) && !idMap.has(upstream.id)) {
+          idMap.set(upstream.id, `${upstream.id}-shot-${stamp}`)
+          nodesToCopy.push(upstream)
+        }
+      }
+
+      // Build duplicated nodes
+      const duplicatedNodes: WorkspaceNode[] = []
+      // The output node itself
+      duplicatedNodes.push({
+        ...output,
+        id: idMap.get(output.id)!,
+        selected: false,
+        position: { x: output.position.x + offsetX, y: output.position.y + offsetY },
+        data: {
+          ...output.data,
+          label: `${output.data.label ?? "Shot"} Copy`,
+          // Reset run state — the duplicate is a fresh shot
+          status: "idle",
+          assetId: undefined,
+          previewUrl: undefined,
+          compiledPrompt: undefined,
+          output: undefined,
+          errorMessage: undefined,
+          lastRunAt: undefined
+        }
+      })
+      // Upstream nodes
+      for (const node of nodesToCopy) {
+        duplicatedNodes.push({
+          ...node,
+          id: idMap.get(node.id)!,
+          selected: false,
+          position: { x: node.position.x + offsetX, y: node.position.y + offsetY },
+          data: {
+            ...node.data,
+            label: `${node.data.label ?? titleFromType(node.type ?? "prompt")} Copy`,
+            // Reset run state for any output nodes inside the cluster
+            ...(node.type === "imageOutput" || node.type === "videoOutput"
+              ? { status: "idle" as const, assetId: undefined, previewUrl: undefined, compiledPrompt: undefined, output: undefined, errorMessage: undefined, lastRunAt: undefined }
+              : {})
+          }
+        })
+      }
+
+      // Build edges: for every original edge where source OR target was duplicated,
+      // create a corresponding edge using the new IDs. Edges to SHARED upstream nodes
+      // (Style Card, Character) keep the original source ID but get the new target.
+      const duplicatedEdges: WorkspaceEdge[] = []
+      for (const edge of directUpstreamEdges) {
+        const newTargetId = idMap.get(output.id)!
+        const newSourceId = idMap.get(edge.source) ?? edge.source
+        duplicatedEdges.push({
+          ...edge,
+          id: `edge-${newSourceId}-${newTargetId}-${stamp}`,
+          source: newSourceId,
+          target: newTargetId,
+          data: { status: "idle" }
+        })
+      }
+
+      const nodes = [...state.nodes, ...duplicatedNodes]
+      const edges = [...state.edges, ...duplicatedEdges]
+      return {
+        nodes,
+        edges,
+        workspaces: updateActiveWorkspace(state, { nodes, edges, lastAutosavedAt: sessionStamp }),
+        selectedNode: idMap.get(output.id)!,
+        saved: true,
+        lastAutosavedAt: sessionStamp
+      }
     }),
   selectNode: (selectedNode) => set({ selectedNode }),
   inspectNode: (inspectedNode) => set({ inspectedNode }),

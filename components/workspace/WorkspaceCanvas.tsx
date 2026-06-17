@@ -16,21 +16,23 @@ import {
   type EdgeMouseHandler,
   type NodeChange
 } from "@xyflow/react"
-import { Check, Copy, Crosshair, Eraser, LayoutTemplate, Link2Off, MousePointer2, Pin, Trash2, type LucideIcon } from "lucide-react"
-import { CustomEdge } from "@/components/workspace/CustomEdge"
+import { Check, ChevronsDownUp, ChevronsUpDown, Copy, CopyPlus, Crosshair, Eraser, GitBranch, HelpCircle, Layers3, LayoutTemplate, Link2Off, MousePointer2, Pin, Plus, Spline, Trash2, type LucideIcon } from "lucide-react"
+import { CustomEdge, type EdgePathStyle } from "@/components/workspace/CustomEdge"
+import { CreateCardModal } from "@/components/workspace/CreateCardModal"
+import { MyCardsModal } from "@/components/workspace/MyCardsModal"
 import { NodePalette, workspaceTools } from "@/components/workspace/NodePalette"
+import { NodesGuideModal } from "@/components/workspace/NodesGuideModal"
 import { PropertiesPanel } from "@/components/workspace/PropertiesPanel"
+import { StoryboardImportWizard } from "@/components/workspace/StoryboardImportWizard"
+import { useProjectStore } from "@/lib/stores/project"
 import { ActionCardNode } from "@/components/workspace/nodes/ActionCardNode"
 import { CameraConfigNode } from "@/components/workspace/nodes/CameraConfigNode"
 import { CharacterNode } from "@/components/workspace/nodes/CharacterNode"
-import { CombinerNode } from "@/components/workspace/nodes/CombinerNode"
 import { ImageOutputNode } from "@/components/workspace/nodes/ImageOutputNode"
 import { PreviewNode } from "@/components/workspace/nodes/PreviewNode"
 import { PromptNode } from "@/components/workspace/nodes/PromptNode"
-import { ScriptNode } from "@/components/workspace/nodes/ScriptNode"
 import { StyleCardNode } from "@/components/workspace/nodes/StyleCardNode"
 import { VideoOutputNode } from "@/components/workspace/nodes/VideoOutputNode"
-import { useProjectStore } from "@/lib/stores/project"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { WorkspaceEdge, WorkspaceNode, WorkspaceNodeType } from "@/lib/types"
 import { getSuggestedNextNodeTypes, validateConnection } from "@/lib/workspace/graphRules"
@@ -44,8 +46,6 @@ const nodeTypes = {
   cameraConfig: CameraConfigNode,
   imageOutput: ImageOutputNode,
   videoOutput: VideoOutputNode,
-  combiner: CombinerNode,
-  script: ScriptNode,
   preview: PreviewNode
 }
 
@@ -91,6 +91,12 @@ function WorkspaceCanvasInner() {
   const updateNode = useWorkspaceStore((state) => state.updateNode)
   const deleteNode = useWorkspaceStore((state) => state.deleteNode)
   const duplicateNode = useWorkspaceStore((state) => state.duplicateNode)
+  const duplicateShot = useWorkspaceStore((state) => state.duplicateShot)
+  const collapseAllNodes = useWorkspaceStore((state) => state.collapseAllNodes)
+  const expandAllNodes = useWorkspaceStore((state) => state.expandAllNodes)
+  const collapsedCount = useWorkspaceStore((state) => state.collapsedNodeIds.size)
+  const nodeCount = useWorkspaceStore((state) => state.nodes.length)
+  const allCollapsed = nodeCount > 0 && collapsedCount === nodeCount
   const selectNode = useWorkspaceStore((state) => state.selectNode)
   const setViewport = useWorkspaceStore((state) => state.setViewport)
   const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace)
@@ -103,6 +109,18 @@ function WorkspaceCanvasInner() {
   const [hideSuggestionsForNode, setHideSuggestionsForNode] = useState<string | null>(null)
   const [expandedSuggestionsForNode, setExpandedSuggestionsForNode] = useState<string | null>(null)
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [cardsOpen, setCardsOpen] = useState(false)
+  const [createCardOpen, setCreateCardOpen] = useState(false)
+  const [edgePathStyle, setEdgePathStyle] = useState<EdgePathStyle>("bezier")
+
+  // Inject the current edge path style into every edge's data so the CustomEdge
+  // renderer picks it up. Re-computed whenever edges or pathStyle change.
+  const styledEdges = useMemo(
+    () => edges.map((edge) => ({ ...edge, data: { ...edge.data, pathStyle: edgePathStyle } })),
+    [edges, edgePathStyle]
+  )
   const lastSavedLabel = useMemo(() => {
     if (!lastAutosavedAt) return "Session edits are not persisted"
     if (lastAutosavedAt === "Session only") return lastAutosavedAt
@@ -185,6 +203,13 @@ function WorkspaceCanvasInner() {
     setMenu(null)
   }
 
+  function duplicateShotCluster(nodeId: string) {
+    duplicateShot(nodeId)
+    setMenu(null)
+    // Scroll the new cluster into view so the user sees the duplication happened.
+    window.setTimeout(() => fitView({ padding: 0.25, maxZoom: 0.9 }), 50)
+  }
+
   function deleteSelected(nodeId: string) {
     deleteNode(nodeId)
     setMenu(null)
@@ -217,22 +242,34 @@ function WorkspaceCanvasInner() {
     <div className="relative flex min-h-[calc(100vh-var(--nav-height))] overflow-hidden bg-background">
       <NodePalette onAddNode={(type) => createNode(type)} />
       <main className="relative min-w-0 flex-1">
-        <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-2 shadow-md">
-          <span className="h-9 rounded-full border border-border-subtle bg-background/80 px-3 pt-2 font-heading text-[10px] font-semibold uppercase tracking-[0.08em] text-accent-cyan shadow-md backdrop-blur">
-            Director Workspace
-          </span>
+        {/* Consolidated top toolbar (Director pill removed per "Minimal" choice) */}
+        <div className="absolute left-4 right-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-1.5 shadow-md">
           <div className="relative">
             <button
               type="button"
               onClick={() => setTemplateMenuOpen((open) => !open)}
-              className="flex h-9 items-center gap-2 rounded px-3 text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary hover:bg-elevated hover:text-accent-cyan"
+              className="flex h-8 items-center gap-2 rounded px-3 text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary hover:bg-elevated hover:text-accent-cyan"
               aria-expanded={templateMenuOpen}
             >
               <LayoutTemplate className="h-4 w-4" />
               Templates
             </button>
             {templateMenuOpen ? (
-              <div className="absolute left-0 top-11 w-72 rounded-[var(--radius-md)] border border-border bg-overlay p-2 text-sm text-text-secondary shadow-lg">
+              <div className="absolute left-0 top-10 w-72 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] border border-border bg-overlay p-2 text-sm text-text-secondary shadow-lg">
+                <div className="px-3 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">From Storyboard</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemplateMenuOpen(false)
+                    setWizardOpen(true)
+                  }}
+                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
+                >
+                  <span className="block font-heading text-xs font-semibold uppercase tracking-[0.08em] text-accent-amber">From Storyboard…</span>
+                  <span className="mt-1 block text-xs leading-5 text-text-muted">Pick frames + style + character with a wizard.</span>
+                </button>
+                <div className="my-1 border-t border-border-subtle" />
+                <div className="px-3 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">Starter templates</div>
                 {workflowTemplates.map((template) => (
                   <button
                     key={template.id}
@@ -247,30 +284,85 @@ function WorkspaceCanvasInner() {
               </div>
             ) : null}
           </div>
-          <button type="button" onClick={() => fitView({ padding: 0.2 })} className="grid h-9 w-9 place-items-center rounded text-text-secondary hover:bg-elevated hover:text-accent-cyan" aria-label="Fit view">
-            <Crosshair className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="absolute left-4 top-20 z-20 flex max-w-[calc(100%-390px)] items-center gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-1.5 shadow-md">
-          {workspaces.map((workspace) => (
-            <button
-              key={workspace.id}
-              type="button"
-              onClick={() => switchWorkspace(workspace.id)}
-              className={`h-8 shrink-0 rounded px-3 font-heading text-[10px] uppercase tracking-[0.08em] ${activeWorkspaceId === workspace.id ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:bg-elevated hover:text-text-primary"}`}
-            >
-              {workspace.name}
-              <span className="ml-2 text-text-muted">{workspace.nodes.length}</span>
+
+          {/* Workspace switcher — same row, no longer floating at top-20 */}
+          <div className="ml-1 flex items-center gap-1 overflow-x-auto">
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                type="button"
+                onClick={() => switchWorkspace(workspace.id)}
+                className={`h-8 shrink-0 rounded px-3 font-heading text-[10px] uppercase tracking-[0.08em] ${activeWorkspaceId === workspace.id ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:bg-elevated hover:text-text-primary"}`}
+              >
+                {workspace.name}
+                <span className="ml-2 text-text-muted">{workspace.nodes.length}</span>
+              </button>
+            ))}
+            <button type="button" onClick={() => clearWorkspace(activeWorkspaceId)} className="grid h-8 w-8 shrink-0 place-items-center rounded text-text-muted hover:bg-accent-red-dim hover:text-accent-red" aria-label="Clear active workspace">
+              <Eraser className="h-4 w-4" />
             </button>
-          ))}
-          <button type="button" onClick={() => clearWorkspace(activeWorkspaceId)} className="grid h-8 w-8 shrink-0 place-items-center rounded text-text-muted hover:bg-accent-red-dim hover:text-accent-red" aria-label="Clear active workspace">
-            <Eraser className="h-4 w-4" />
-          </button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => (allCollapsed ? expandAllNodes() : collapseAllNodes())}
+              disabled={nodes.length === 0}
+              className="flex h-8 items-center gap-1.5 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary transition hover:bg-elevated hover:text-accent-cyan disabled:opacity-40"
+              aria-label={allCollapsed ? "Expand all nodes" : "Collapse all nodes"}
+              title={allCollapsed ? "Expand all nodes" : "Collapse all nodes"}
+            >
+              {allCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{allCollapsed ? "Expand all" : "Collapse all"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateCardOpen(true)}
+              className="flex h-8 items-center gap-1.5 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
+              aria-label="Create a new card"
+              title="Create a new Style / Character / Action card"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Create</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCardsOpen(true)}
+              className="flex h-8 items-center gap-1.5 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
+              aria-label="My saved cards"
+              title="View saved Style / Character / Action cards"
+            >
+              <Layers3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">My Cards</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuideOpen(true)}
+              className="flex h-8 items-center gap-1.5 rounded px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
+              aria-label="Nodes guide"
+              title="What does each node do?"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Guide</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEdgePathStyle((style) => (style === "bezier" ? "smoothstep" : "bezier"))}
+              className={`grid h-8 w-8 place-items-center rounded transition ${edgePathStyle === "bezier" ? "text-accent-cyan bg-accent-cyan-dim" : "text-text-secondary hover:bg-elevated hover:text-accent-cyan"}`}
+              aria-label={`Edge style: ${edgePathStyle}`}
+              title={`Edge style: ${edgePathStyle === "bezier" ? "Curved bezier" : "Right-angle smoothstep"} — click to toggle`}
+            >
+              {edgePathStyle === "bezier" ? <Spline className="h-4 w-4" /> : <GitBranch className="h-4 w-4" />}
+            </button>
+            <button type="button" onClick={() => fitView({ padding: 0.2 })} className="grid h-8 w-8 place-items-center rounded text-text-secondary hover:bg-elevated hover:text-accent-cyan" aria-label="Fit view" title="Fit view">
+              <Crosshair className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={styledEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
@@ -313,8 +405,8 @@ function WorkspaceCanvasInner() {
           defaultEdgeOptions={{ type: "custom", animated: true, data: { status: "idle" } }}
         >
           <Background color="rgba(255,255,255,0.08)" gap={24} />
-          <Controls className="!border-border-subtle !bg-surface !shadow-md" />
-          <MiniMap nodeColor="#00E5FF" maskColor="rgba(8,8,8,0.72)" className="!border !border-border-subtle !bg-surface" />
+          <Controls className="!border-border-subtle !bg-surface !shadow-md" position="bottom-left" />
+          <MiniMap nodeColor="#00E5FF" maskColor="rgba(8,8,8,0.72)" className="!border !border-border-subtle !bg-surface" position="bottom-right" />
         </ReactFlow>
 
         {connectionError ? <ConnectionNotice message={connectionError} onClose={() => setConnectionError(null)} /> : null}
@@ -327,7 +419,11 @@ function WorkspaceCanvasInner() {
           onAdd={createConnectedNode}
         />
         <StatusBar nodeCount={nodes.length} edgeCount={edges.length} saved={saved} lastSaved={lastSavedLabel} />
-        <ContextMenu menu={menu} onAddNode={createNode} onFitView={() => fitView({ padding: 0.2 })} onSelectAll={selectAll} onDuplicate={duplicateSelected} onDelete={deleteSelected} onPin={pinNode} onDisconnect={disconnectEdge} />
+        <ContextMenu menu={menu} onAddNode={createNode} onFitView={() => fitView({ padding: 0.2 })} onSelectAll={selectAll} onDuplicate={duplicateSelected} onDuplicateShot={duplicateShotCluster} onDelete={deleteSelected} onPin={pinNode} onDisconnect={disconnectEdge} />
+        <StoryboardImportWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+        <NodesGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+        <MyCardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
+        <CreateCardModal open={createCardOpen} onClose={() => setCreateCardOpen(false)} />
         <PropertiesPanel />
       </main>
     </div>
@@ -368,7 +464,7 @@ function NextNodeSuggestions({
   const expanded = expandedNodeId === selectedNode.id
 
   return (
-    <div className="absolute left-4 top-20 z-20 max-w-[calc(100%-360px)] rounded-[var(--radius-md)] border border-border-subtle bg-surface/90 p-1.5 shadow-md backdrop-blur max-lg:left-3 max-lg:top-28 max-lg:max-w-[190px]">
+    <div className="absolute left-1/2 top-20 z-20 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-1.5 shadow-md backdrop-blur">
       <button
         type="button"
         onMouseDown={(event) => event.stopPropagation()}
@@ -378,11 +474,11 @@ function NextNodeSuggestions({
         }}
         className="flex h-8 items-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
       >
-        <span className="font-heading font-semibold uppercase tracking-[0.08em]">Next</span>
+        <span className="font-heading font-semibold uppercase tracking-[0.08em]">Add next</span>
         <span className="truncate text-text-muted">{suggestions.length}</span>
       </button>
       {expanded ? (
-        <div className="mt-1 flex max-w-full flex-wrap gap-1.5">
+        <div className="mt-1 flex max-w-full flex-wrap justify-center gap-1.5">
         {suggestions.map((type) => {
           const tool = workspaceTools.find((item) => item.type === type)
           if (!tool) return null
@@ -411,14 +507,14 @@ function NextNodeSuggestions({
 
 function StatusBar({ nodeCount, edgeCount, saved, lastSaved }: { nodeCount: number; edgeCount: number; saved: boolean; lastSaved: string }) {
   return (
-    <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex h-12 -translate-x-1/2 items-center gap-5 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 px-5 text-sm text-text-secondary shadow-md">
-      <span>{nodeCount} nodes</span>
-      <span>{edgeCount} edges</span>
-      <span className="flex items-center gap-2 text-accent-green">
-        <Check className="h-4 w-4" />
+    <div className="pointer-events-none absolute right-4 top-20 z-20 flex h-8 items-center gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 px-3 text-[11px] text-text-secondary shadow-md">
+      <span>{nodeCount}n</span>
+      <span>{edgeCount}e</span>
+      <span className="flex items-center gap-1 text-accent-green">
+        <Check className="h-3 w-3" />
         {saved ? "Saved" : "Saving"}
       </span>
-      <span>{lastSaved}</span>
+      <span className="text-text-muted">{lastSaved}</span>
     </div>
   )
 }
@@ -429,6 +525,7 @@ function ContextMenu({
   onFitView,
   onSelectAll,
   onDuplicate,
+  onDuplicateShot,
   onDelete,
   onPin,
   onDisconnect
@@ -438,6 +535,7 @@ function ContextMenu({
   onFitView: () => void
   onSelectAll: () => void
   onDuplicate: (nodeId: string) => void
+  onDuplicateShot: (nodeId: string) => void
   onDelete: (nodeId: string) => void
   onPin: (nodeId: string) => void
   onDisconnect: (edgeId: string) => void
@@ -464,6 +562,7 @@ function ContextMenu({
       ) : menu.kind === "node" ? (
         <>
           <MenuButton icon={Copy} label="Duplicate" onClick={() => onDuplicate(menu.nodeId)} />
+          <MenuButton icon={CopyPlus} label="Duplicate shot cluster" onClick={() => onDuplicateShot(menu.nodeId)} />
           <MenuButton icon={Trash2} label="Delete" onClick={() => onDelete(menu.nodeId)} />
           <MenuButton icon={Pin} label="Pin" onClick={() => onPin(menu.nodeId)} />
         </>

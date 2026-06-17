@@ -4,6 +4,8 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import {
+  Ban,
+  Camera,
   Check,
   Download,
   Film,
@@ -31,13 +33,17 @@ import { Button } from "@/components/ui/button"
 import { StoryboardContentSection, StoryboardWorkspaceLayout } from "@/components/cards/storyboard/storyboard-layout"
 import { ElitePlanCard } from "@/components/cards/storyboard/elite-plan-card"
 import { CardStack, type CardStackItem } from "@/components/ui/card-stack"
-import { useProjectStore } from "@/lib/stores/project"
+import { SendToWorkspaceButton } from "@/components/workspace/SendToWorkspaceButton"
+import { ImageGeneration } from "@/components/ui/ai-chat-image-generation-1"
+import { CameraConfigGrid } from "@/components/workspace/nodes/CameraConfigGrid"
+import { useProjectStore, defaultCameraConfig } from "@/lib/stores/project"
 import {
   storyboardTemplates,
   useStoryboardStore,
   type AddCardInput
 } from "@/lib/stores/storyboard"
 import type {
+  CameraConfig,
   GenerationAspectRatio,
   GenerationAppliedCard,
   GenerationCardType,
@@ -56,7 +62,7 @@ import type {
 const MAX_REFERENCE_IMAGES = 14
 const MAX_APPLIED_CARDS = 12
 const MAX_REFERENCE_SIZE = 10 * 1024 * 1024
-const MOCK_GENERATION_DELAY_MS = 850
+const MOCK_GENERATION_DELAY_MS = 8500
 const MOCK_GENERATION_RESET_MS = 180
 const ACCEPTED_REFERENCE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 const focusableSelector = [
@@ -75,11 +81,35 @@ const generationModes: Array<{ value: GenerationMode; label: string; description
   { value: "image", label: "Image", description: "Generate cards and still frames", icon: ImagePlus },
   { value: "video", label: "Video", description: "Generate motion clips from the same context", icon: Film }
 ]
-const cardTypes: Array<{ value: GenerationCardType; label: string }> = [
-  { value: "style", label: "Style Card" },
-  { value: "storyboard", label: "Storyboard" },
-  { value: "character", label: "Character Ref Sheet" },
-  { value: "none", label: "None" }
+const cardTypes: Array<{ value: GenerationCardType; label: string; icon: typeof Palette; shortLabel: string; promptPlaceholder: string }> = [
+  {
+    value: "style",
+    label: "Style Card",
+    shortLabel: "Style",
+    icon: Palette,
+    promptPlaceholder: "Describe visual language, mood, palette, lighting, and texture..."
+  },
+  {
+    value: "storyboard",
+    label: "Storyboard",
+    shortLabel: "Story",
+    icon: Film,
+    promptPlaceholder: "Describe a scene, shot, action, mood, or moment..."
+  },
+  {
+    value: "character",
+    label: "Character Ref",
+    shortLabel: "Character",
+    icon: UserRound,
+    promptPlaceholder: "Describe a character: appearance, wardrobe, expression, props..."
+  },
+  {
+    value: "none",
+    label: "None",
+    shortLabel: "None",
+    icon: Ban,
+    promptPlaceholder: "Describe your scene, character, mood, or style..."
+  }
 ]
 const modelOptions: Array<{ value: ImageGenerationModel; label: string; description: string; disabled?: boolean }> = [
   { value: "nanobanana-2", label: "Nano Banana 2", description: "Fast mock image preview" },
@@ -94,7 +124,7 @@ type GalleryCardFilter = "all" | GenerationLibraryType
 type GallerySort = "newest" | "oldest" | "favorites-first" | "images-first" | "videos-first"
 type GalleryDensity = "comfort" | "compact"
 type StoryboardSection = "create" | "media"
-type ComposerSection = "templates" | "cards" | "references" | "model" | "output"
+type ComposerSection = "templates" | "cards" | "references" | "camera" | "model" | "output"
 type PendingGenerationPreview = {
   id: string
   mode: GenerationMode
@@ -154,6 +184,15 @@ function getAppliedCards(cards: Record<GenerationLibraryType, UserCard[]>, cardI
 
 function cardTypeLabel(type: GenerationCardType) {
   return cardTypes.find((cardType) => cardType.value === type)?.label ?? "None"
+}
+
+function cardTypePromptPlaceholder(type: GenerationCardType, mode: GenerationMode) {
+  if (mode === "video") return "Describe motion, action, camera move, and continuity..."
+  return cardTypes.find((cardType) => cardType.value === type)?.promptPlaceholder ?? "Describe your scene, character, mood, or style..."
+}
+
+function cardTypeIcon(type: GenerationCardType) {
+  return cardTypes.find((cardType) => cardType.value === type)?.icon ?? Ban
 }
 
 function mediaTypeLabel(mode: GenerationMode) {
@@ -687,15 +726,24 @@ function openCardsLibrary(type: GenerationLibraryType) {
   return (
     <StoryboardWorkspaceLayout
       toolbar={
-        <StoryboardSectionTabs
-          activeSection={storyboardSection}
-          mediaCount={storyboard.generations.length}
-          onChange={(section) => {
-            setStoryboardSection(section)
-            setComposerSection(null)
-            setSelectedGenerationIds([])
-          }}
-        />
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <StoryboardSectionTabs
+            activeSection={storyboardSection}
+            mediaCount={storyboard.generations.length}
+            onChange={(section) => {
+              setStoryboardSection(section)
+              setComposerSection(null)
+              setSelectedGenerationIds([])
+            }}
+          />
+          {storyboard.generations.length > 0 ? (
+            <SendToWorkspaceButton
+              generations={storyboard.generations}
+              label={`Send ${storyboard.generations.length} to Workspace`}
+              variant="primary"
+            />
+          ) : null}
+        </div>
       }
       hero={
         storyboardSection === "create" ? (
@@ -730,6 +778,7 @@ function openCardsLibrary(type: GenerationLibraryType) {
             cards={storyboard.cards}
             appliedCards={appliedCards}
             appliedCardIds={appliedCardIds}
+            camera={storyboard.composer.camera}
             creditCost={currentCreditCost}
             onModeChange={(mode) => {
               updateComposer(projectId, { mode })
@@ -739,6 +788,9 @@ function openCardsLibrary(type: GenerationLibraryType) {
             }}
             onPromptChange={(prompt) => updateComposer(projectId, { prompt })}
             onCardTypeChange={(cardType) => {
+              // Also drive the template type filter so templates match the picked card type
+              // (matches the user's "Both update" answer for card-type behavior).
+              if (cardType !== "none") setTemplateType(cardType)
               updateComposer(projectId, { cardType })
               setComposerSection(null)
             }}
@@ -761,6 +813,9 @@ function openCardsLibrary(type: GenerationLibraryType) {
             onDurationSecondsChange={(durationSeconds) => {
               updateComposer(projectId, { durationSeconds })
               setComposerSection(null)
+            }}
+            onCameraChange={(camera) => {
+              updateComposer(projectId, { camera })
             }}
             onRemoveTemplate={() => setSelectedTemplate(projectId, null)}
             onReferenceInput={onFileInput}
@@ -988,46 +1043,38 @@ function HeroGeneration({
 }) {
   const activeMode = pendingGeneration?.mode ?? (generation ? generationMediaType(generation) : mode)
   const isVideoGeneration = activeMode === "video"
-  const headline = pendingGeneration ? `Generating ${isVideoGeneration ? "clip" : "frame"}` : "Create your next shot."
-  const accentHeadline = isVideoGeneration ? "Generate motion." : "Generate the impossible."
-  const emptyCopy =
-    mode === "video"
-      ? "Describe motion, camera, continuity, and mood. Open Media when you want to browse every output."
-      : "Describe a scene, character, mood, or style. Open Media when you want to browse every output."
-  const promptText = pendingGeneration?.prompt ?? generation?.prompt ?? template?.description ?? emptyCopy
+  const isGenerating = !!pendingGeneration
+
+  // The image to show inside the ImageGeneration card.
+  // If generating, show the pending preview. If a generation exists, show it.
+  // Otherwise show a placeholder gradient.
+  const displayImageUrl = pendingGeneration?.imageUrl ?? generation?.imageUrl ?? "linear-gradient(135deg, rgba(0,229,255,0.24), rgba(7,8,13,0.96) 46%, rgba(255,184,0,0.16))"
+  const displayPrompt = pendingGeneration?.prompt ?? generation?.prompt ?? template?.description ?? "Describe a scene, character, mood, or style to generate your next frame."
 
   return (
-    <section className="mx-auto grid w-full max-w-[760px] place-items-center text-center" aria-label={headline}>
-      <CardStack
-        items={stackItems}
-        cardWidth={360}
-        cardHeight={202}
-        maxVisible={3}
-        overlap={0.62}
-        spreadDeg={18}
-        activeLiftPx={10}
-        activeScale={1.02}
-        inactiveScale={0.92}
-        springStiffness={210}
-        springDamping={25}
-        showDots={false}
-        showArrows={false}
-        autoAdvance={stackItems.length > 1}
-        intervalMs={6200}
-        className="mx-auto h-[250px] w-full max-w-[620px]"
-        renderCard={(item, state) => (
-          <StoryboardHeroStackCard item={item} active={state.active} progress={generationProgress} />
-        )}
-      />
+    <section className="mx-auto grid w-full max-w-[760px] place-items-center text-center" aria-label="Generation preview">
+      <ImageGeneration isGenerating={isGenerating} label={isVideoGeneration ? "clip" : "frame"} className="w-full max-w-[760px]">
+        <div
+          className="grid aspect-video w-full place-items-center bg-cover bg-center"
+          style={{
+            minHeight: "300px",
+            backgroundImage: displayImageUrl.startsWith("linear-gradient")
+              ? displayImageUrl
+              : displayImageUrl.startsWith("data:")
+                ? `url("${displayImageUrl}")`
+                : `url("${displayImageUrl}")`
+          }}
+        >
+          {!displayImageUrl || displayImageUrl.startsWith("linear-gradient") ? (
+            <div className="grid place-items-center gap-2 px-6 text-center">
+              <p className="text-sm leading-6 text-white/52">{displayPrompt}</p>
+            </div>
+          ) : null}
+        </div>
+      </ImageGeneration>
 
-      <div className="-mt-2">
-        <p className="font-heading text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-cyan">{activeMode === "video" ? "Video generation" : "Image generation"}</p>
-        <h1 className="mt-2 font-heading text-3xl font-bold uppercase leading-[0.95] text-white md:text-4xl">
-          {headline}
-          <span className="block text-accent-cyan">{accentHeadline}</span>
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">{promptText}</p>
-      </div>
+      {/* Prompt text below the card */}
+      <p className="mx-auto mt-3 max-w-xl text-xs leading-5 text-white/52 line-clamp-2">{displayPrompt}</p>
     </section>
   )
 }
@@ -1075,6 +1122,7 @@ function GenerationComposer({
   cards,
   appliedCards,
   appliedCardIds,
+  camera,
   creditCost,
   onModeChange,
   onPromptChange,
@@ -1084,6 +1132,7 @@ function GenerationComposer({
   onVideoModelChange,
   onVideoSizeChange,
   onDurationSecondsChange,
+  onCameraChange,
   onRemoveTemplate,
   onReferenceInput,
   onReferenceDrop,
@@ -1113,6 +1162,7 @@ function GenerationComposer({
   composerSection: ComposerSection | null
   templateType: GenerationLibraryType
   cards: Record<GenerationLibraryType, UserCard[]>
+  camera?: CameraConfig
   appliedCards: GenerationAppliedCard[]
   appliedCardIds: string[]
   creditCost: number
@@ -1124,6 +1174,7 @@ function GenerationComposer({
   onVideoModelChange: (model: VideoGenerationModel) => void
   onVideoSizeChange: (videoSize: VideoGenerationSize) => void
   onDurationSecondsChange: (durationSeconds: VideoDurationSeconds) => void
+  onCameraChange: (camera: CameraConfig) => void
   onRemoveTemplate: () => void
   onReferenceInput: (event: ChangeEvent<HTMLInputElement>) => void
   onReferenceDrop: (event: DragEvent<HTMLLabelElement>) => void
@@ -1140,7 +1191,8 @@ function GenerationComposer({
   const contextCount = appliedCards.length + referenceImages.length + (selectedTemplate ? 1 : 0)
   const activeModelLabel = modelLabel(mode === "video" ? videoModel : model)
   const outputLabel = mode === "video" ? `${videoSize} / ${durationSeconds}s` : aspectRatio
-  const promptPlaceholder = mode === "video" ? "Describe motion, action, camera move, and continuity..." : "Describe your scene, character, mood, or style..."
+  const cameraLabel = `${camera?.focalLength ?? "35"}mm ${camera?.movement ?? "locked-off"}`
+  const promptPlaceholder = cardTypePromptPlaceholder(cardType, mode)
 
   function resizePrompt(event: ChangeEvent<HTMLTextAreaElement>) {
     const element = event.currentTarget
@@ -1151,11 +1203,41 @@ function GenerationComposer({
 
   return (
     <section className="relative mx-auto w-full max-w-[820px]">
+      {/* Generation type segmented control (image mode only) — picks what kind of card you're creating */}
+      {mode === "image" ? (
+        <div className="mb-2 flex flex-col items-center gap-0.5">
+          <p className="text-[9px] uppercase tracking-[0.1em] text-white/40">Generation type — what you're creating</p>
+          <div className="inline-flex items-stretch overflow-hidden rounded-[var(--radius-md)] border border-white/[0.12] bg-[#0e1216]/95 p-0.5 shadow-lg shadow-black/30 backdrop-blur">
+            {cardTypes.map(({ value, label, shortLabel, icon: Icon }) => {
+              const active = cardType === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onCardTypeChange(value)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] transition ${
+                    active
+                      ? "bg-accent-cyan text-black"
+                      : "text-white/60 hover:bg-white/[0.05] hover:text-accent-cyan"
+                  }`}
+                  aria-pressed={active}
+                  title={label}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{shortLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mb-2 flex flex-wrap items-center justify-center gap-1">
-        <CompactControlTab label="Cards" value={String(appliedCards.length)} onClick={() => onOpenComposerSection("cards")} />
+        <CompactControlTab label="Applied" value={String(appliedCards.length)} onClick={() => onOpenComposerSection("cards")} />
         <CompactControlTab label="Refs" value={String(referenceImages.length)} onClick={() => onOpenComposerSection("references")} />
+        <CompactControlTab label="Camera" value={cameraLabel} onClick={() => onOpenComposerSection("camera")} />
         <CompactControlTab label="Model" value={activeModelLabel} onClick={() => onOpenComposerSection("model")} />
-        <CompactControlTab label={mode === "video" ? "Clip" : "Aspect"} value={outputLabel} onClick={() => onOpenComposerSection("output")} />
+        <CompactControlTab label={mode === "video" ? "Video" : "Aspect"} value={outputLabel} onClick={() => onOpenComposerSection("output")} />
       </div>
 
       <div className="grid gap-2 border border-white/[0.14] bg-[#111418]/96 p-2 shadow-2xl shadow-black/40 backdrop-blur-xl md:grid-cols-[74px_minmax(0,1fr)_114px] md:items-stretch">
@@ -1254,12 +1336,14 @@ function GenerationComposer({
           cards={cards}
           appliedCards={appliedCards}
           appliedCardIds={appliedCardIds}
+          camera={camera}
           onCardTypeChange={onCardTypeChange}
           onAspectRatioChange={onAspectRatioChange}
           onModelChange={onModelChange}
           onVideoModelChange={onVideoModelChange}
           onVideoSizeChange={onVideoSizeChange}
           onDurationSecondsChange={onDurationSecondsChange}
+          onCameraChange={onCameraChange}
           onRemoveTemplate={onRemoveTemplate}
           onReferenceInput={onReferenceInput}
           onReferenceDrop={onReferenceDrop}
@@ -1518,12 +1602,14 @@ function ComposerToolsMenu({
   cards,
   appliedCards,
   appliedCardIds,
+  camera,
   onCardTypeChange,
   onAspectRatioChange,
   onModelChange,
   onVideoModelChange,
   onVideoSizeChange,
   onDurationSecondsChange,
+  onCameraChange,
   onRemoveTemplate,
   onReferenceInput,
   onReferenceDrop,
@@ -1550,12 +1636,14 @@ function ComposerToolsMenu({
   cards: Record<GenerationLibraryType, UserCard[]>
   appliedCards: GenerationAppliedCard[]
   appliedCardIds: string[]
+  camera?: CameraConfig
   onCardTypeChange: (cardType: GenerationCardType) => void
   onAspectRatioChange: (aspectRatio: GenerationAspectRatio) => void
   onModelChange: (model: ImageGenerationModel) => void
   onVideoModelChange: (model: VideoGenerationModel) => void
   onVideoSizeChange: (videoSize: VideoGenerationSize) => void
   onDurationSecondsChange: (durationSeconds: VideoDurationSeconds) => void
+  onCameraChange: (camera: CameraConfig) => void
   onRemoveTemplate: () => void
   onReferenceInput: (event: ChangeEvent<HTMLInputElement>) => void
   onReferenceDrop: (event: DragEvent<HTMLLabelElement>) => void
@@ -1572,14 +1660,15 @@ function ComposerToolsMenu({
   const isAtLimit = appliedCardIds.length >= MAX_APPLIED_CARDS
   const sectionTitle: Record<ComposerSection, { title: string; description: string }> = {
     templates: { title: "Templates", description: "Pick a template and narrow it by type." },
-    cards: { title: "Cards", description: "Apply saved cards or open a storage library." },
+    cards: { title: "Applied cards", description: "Saved Style/Character/Storyboard references to attach as context for this generation." },
     references: { title: "References", description: "Attach reference images from files or drag and drop." },
+    camera: { title: "Camera", description: "Set framing that carries into every generated shot and into the Workspace." },
     model: { title: "Model", description: "Choose the active generation model." },
-    output: { title: "Output", description: mode === "video" ? "Set clip size and duration." : "Set card type and aspect ratio." }
+    output: { title: "Output", description: mode === "video" ? "Set clip size and duration." : "Set aspect ratio. Generation type is set by the segmented control above the prompt." }
   }
 
   return (
-    <div className="absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 w-[min(100vw-1rem,720px)] -translate-x-1/2 max-h-[min(34vh,300px)] overflow-y-auto border border-white/[0.12] bg-[#0c0f11]/96 p-2 text-left shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className={`absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 -translate-x-1/2 max-h-[min(70vh,620px)] overflow-y-auto border border-white/[0.12] bg-[#0c0f11]/96 p-2 text-left shadow-2xl shadow-black/50 backdrop-blur-2xl ${section === "camera" ? "w-[min(100vw-1rem,860px)]" : "w-[min(100vw-1rem,720px)]"}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-heading text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-cyan">{sectionTitle[section].title}</p>
@@ -1639,7 +1728,7 @@ function ComposerToolsMenu({
       <div className={`${section !== "cards" ? "hidden" : ""}`}>
         <section className="border border-white/[0.08] bg-white/[0.035] p-2.5">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="font-heading text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">Cards</p>
+            <p className="font-heading text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">Applied cards</p>
             <span className="text-[10px] text-white/44">{appliedCardIds.length}/{MAX_APPLIED_CARDS} applied</span>
           </div>
           {totalCards === 0 ? (
@@ -1712,6 +1801,10 @@ function ComposerToolsMenu({
         </section>
       </div>
 
+      <div className={`${section !== "camera" ? "hidden" : ""}`}>
+        <StoryboardComposerCameraPanel camera={camera} onChange={onCameraChange} />
+      </div>
+
       <div className={`${section !== "model" ? "hidden" : ""}`}>
         <section className="border border-white/[0.08] bg-white/[0.035] p-2.5">
           <p className="mb-2 font-heading text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">Model</p>
@@ -1733,8 +1826,8 @@ function ComposerToolsMenu({
             </div>
           ) : (
             <div className="grid gap-2">
-              <OptionGroup label="Card type" options={cardTypes.map((item) => item.value)} value={cardType} labels={Object.fromEntries(cardTypes.map((item) => [item.value, item.label]))} onSelect={(value) => onCardTypeChange(value as GenerationCardType)} />
               <OptionGroup label="Aspect" options={aspectRatios} value={aspectRatio} onSelect={(value) => onAspectRatioChange(value as GenerationAspectRatio)} />
+              <p className="text-[10px] text-white/42">Card type is set by the segmented control above the prompt.</p>
             </div>
           )}
         </section>
@@ -1776,6 +1869,42 @@ function OptionGroup({
         ))}
       </div>
     </div>
+  )
+}
+
+/**
+ * Compact Camera panel rendered inside the Storyboard composer's Camera accordion.
+ * Mirrors the workspace CameraConfigNode's options but in a denser, single-column layout
+ * that fits the composer's floating tools menu. Selected config carries into every
+ * generated shot and into the Workspace graph on "Send to Workspace".
+ */
+function StoryboardComposerCameraPanel({
+  camera,
+  onChange
+}: {
+  camera: CameraConfig | undefined
+  onChange: (next: CameraConfig) => void
+}) {
+  return (
+    <section className="border border-white/[0.08] bg-white/[0.035] p-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="font-heading text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">Camera</p>
+        <button
+          type="button"
+          onClick={() => onChange({ ...defaultCameraConfig })}
+          className="text-[10px] text-white/48 hover:text-accent-cyan"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Same visual grid as the Director mode Camera node — compact mode for the narrow composer menu */}
+      <CameraConfigGrid camera={camera} onChange={onChange} compact />
+
+      <p className="mt-2 text-[10px] leading-4 text-white/42">
+        This framing applies to every generated shot. When you "Send to Workspace", each shot's Camera node inherits these defaults — you can still tweak per shot there.
+      </p>
+    </section>
   )
 }
 

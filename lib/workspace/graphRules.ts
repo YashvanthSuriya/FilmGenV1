@@ -1,13 +1,13 @@
 import type { WorkspaceEdge, WorkspaceNode, WorkspaceNodeType } from "@/lib/types"
 
 export const nextNodeRules: Record<WorkspaceNodeType, WorkspaceNodeType[]> = {
-  styleCard: ["actionCard", "character", "prompt", "cameraConfig", "combiner", "imageOutput", "videoOutput"],
-  actionCard: ["cameraConfig", "prompt", "combiner", "imageOutput", "videoOutput"],
-  character: ["actionCard", "prompt", "combiner", "imageOutput", "videoOutput"],
-  prompt: ["cameraConfig", "combiner", "imageOutput", "videoOutput", "script"],
-  cameraConfig: ["combiner", "imageOutput", "videoOutput"],
+  styleCard: ["actionCard", "character", "prompt", "cameraConfig", "imageOutput", "videoOutput"],
+  actionCard: ["cameraConfig", "prompt", "imageOutput", "videoOutput"],
+  character: ["actionCard", "prompt", "imageOutput", "videoOutput"],
+  prompt: ["cameraConfig", "imageOutput", "videoOutput"],
+  cameraConfig: ["imageOutput", "videoOutput"],
   combiner: ["imageOutput", "videoOutput"],
-  script: ["prompt", "combiner", "videoOutput"],
+  script: ["prompt", "videoOutput"],
   imageOutput: ["videoOutput", "preview"],
   videoOutput: ["preview"],
   preview: []

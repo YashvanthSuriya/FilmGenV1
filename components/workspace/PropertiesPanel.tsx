@@ -80,11 +80,11 @@ export function PropertiesPanel() {
             ) : null}
             {selectedNode.data.compiledPrompt ? (
               <div className="space-y-2">
-                <Label>Compiled Prompt</Label>
+                <Label>Compiled Prompt (editable — overrides the assembled prompt for the next run)</Label>
                 <textarea
                   value={selectedNode.data.compiledPrompt}
-                  readOnly
-                  className="min-h-36 w-full resize-none rounded-[var(--radius-md)] border border-border bg-background p-3 text-sm text-text-secondary outline-none"
+                  onChange={(event) => updateNode(selectedNode.id, { compiledPrompt: event.target.value })}
+                  className="min-h-36 w-full resize-none rounded-[var(--radius-md)] border border-border bg-background p-3 text-sm text-text-secondary outline-none focus:border-accent-cyan"
                 />
               </div>
             ) : null}

@@ -9,7 +9,7 @@ import { BaseNode } from "./BaseNode"
 export function PromptNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
   const updateNode = useWorkspaceStore((state) => state.updateNode)
   return (
-    <BaseNode id={id} icon={MessageSquareText} label="Prompt" selected={selected} status={data.status}>
+    <BaseNode id={id} icon={MessageSquareText} label="Prompt" selected={selected} status={data.status} nodeType="prompt">
       <textarea
         value={data.prompt ?? ""}
         onChange={(event) => updateNode(id, { prompt: event.target.value })}

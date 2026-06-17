@@ -21,7 +21,7 @@ describe("workspace prompt assembly", () => {
       node("action", "actionCard", { actionCardId: "action-1" }),
       node("character", "character", { characterId: "char-1" }),
       node("camera", "cameraConfig", {
-        camera: { lens: "50mm", movement: "dolly-in", angle: "low-angle", aperture: "f/1.8", fps: 24 }
+        camera: { body: "full-frame-cine", lens: "compact-anamorphic", focalLength: "50", movement: "dolly-in", angle: "low-angle", aperture: "f/1.8", fps: 24 }
       }),
       node("prompt", "prompt", { prompt: "A neon alley confrontation." }),
       node("script", "script", { script: "The detective pauses before the door." }),
@@ -180,7 +180,7 @@ describe("workspace output analysis", () => {
       node("style", "styleCard", { styleCardId: "style-1" }),
       node("character", "character", { characterId: "char-1" }),
       node("action", "actionCard", { actionCardId: "action-1" }),
-      node("camera", "cameraConfig", { camera: { lens: "35mm", movement: "dolly", angle: "eye-level", aperture: "f/2.8", fps: 24 } }),
+      node("camera", "cameraConfig", { camera: { body: "full-frame-cine", lens: "compact-anamorphic", focalLength: "35", movement: "dolly", angle: "eye-level", aperture: "f/2.8", fps: 24 } }),
       node("prompt", "prompt", { prompt: "A tense doorway reveal." }),
       node("image", "imageOutput")
     ]

@@ -24,45 +24,44 @@ export default function StudioPage() {
     setActiveTab(activeTab)
   }, [activeTab, setActiveTab])
 
+  // Use the activeTab as the React `key` so React unmounts the old tab and mounts
+  // the new one. The CSS animation on the wrapper triggers on each mount → smooth fade-in.
+  let content: React.ReactNode = null
   if (activeTab === "storyboard") {
-    return (
+    content = (
       <StudioErrorBoundary>
         <StoryboardWorkspace />
       </StudioErrorBoundary>
     )
-  }
-
-  if (activeTab === "workspace") {
-    return (
+  } else if (activeTab === "workspace") {
+    content = (
       <StudioErrorBoundary>
         <WorkspaceCanvas />
       </StudioErrorBoundary>
     )
-  }
-
-  if (activeTab === "editing") {
-    return (
+  } else if (activeTab === "editing") {
+    content = (
       <StudioErrorBoundary>
         <EditorPlaceholder />
       </StudioErrorBoundary>
     )
-  }
-
-  if (activeTab === "gallery") {
-    return (
+  } else if (activeTab === "gallery") {
+    content = (
       <StudioErrorBoundary>
         <GalleryTab />
       </StudioErrorBoundary>
     )
-  }
-
-  if (activeTab === "challenges") {
-    return (
+  } else if (activeTab === "challenges") {
+    content = (
       <StudioErrorBoundary>
         <ChallengesTab />
       </StudioErrorBoundary>
     )
   }
 
-  return null
+  return (
+    <div key={activeTab} className="studio-tab-transition">
+      {content}
+    </div>
+  )
 }

@@ -17,7 +17,7 @@ function projectSlot(id: string, name: string): ProjectSlot {
     characters: [],
     actionCards: [],
     assets: [],
-    cameraConfig: { lens: "35mm", movement: "static", angle: "eye-level", aperture: "f/2.8", fps: 24 },
+    cameraConfig: { body: "full-frame-cine", lens: "compact-anamorphic", focalLength: "35", movement: "static", angle: "eye-level", aperture: "f/2.8", fps: 24 },
     editingState: createInitialEditingState(),
     workspaceMode: "director",
     workspaceMemory: { activeWorkspaceId: "workspace-1", workspaces: [], nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 0.85 } }

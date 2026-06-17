@@ -1,7 +1,9 @@
 "use client"
 
-import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@xyflow/react"
+import { BaseEdge, getBezierPath, getSmoothStepPath, type EdgeProps } from "@xyflow/react"
 import type { WorkspaceEdge } from "@/lib/types"
+
+export type EdgePathStyle = "bezier" | "smoothstep"
 
 export function CustomEdge({
   sourceX,
@@ -13,7 +15,11 @@ export function CustomEdge({
   markerEnd,
   data
 }: EdgeProps<WorkspaceEdge>) {
-  const [edgePath] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
+  const pathStyle: EdgePathStyle = (data?.pathStyle as EdgePathStyle) ?? "bezier"
+  const [edgePath] =
+    pathStyle === "smoothstep"
+      ? getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 12 })
+      : getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
   const generating = data?.status === "generating"
 
   return (

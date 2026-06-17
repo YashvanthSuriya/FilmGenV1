@@ -1,10 +1,15 @@
 "use client"
 
 import type { LucideIcon } from "lucide-react"
-import { Camera, Combine, Image, MessageSquareText, MonitorPlay, Palette, ScrollText, UserRound, Video, Zap } from "lucide-react"
+import { Camera, Image, MessageSquareText, MonitorPlay, Palette, UserRound, Video, Zap } from "lucide-react"
 import type { WorkspaceNodeType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+// Note: Script and Shot Builder (Combiner) were removed per the form-based shot list redesign.
+// Script is now merged into Prompt (write dialogue inline). Shot Builder's variant feature
+// moved to a "Variant" field on the Image/Video Output node and on Shot cards.
+// Existing graphs that contain Script/Combiner nodes still render them (the node components
+// are still registered in WorkspaceCanvas), they're just not addable from the palette.
 export const workspaceTools: Array<{ type: WorkspaceNodeType; label: string; icon: LucideIcon }> = [
   { type: "styleCard", label: "Style Card", icon: Palette },
   { type: "actionCard", label: "Action", icon: Zap },
@@ -13,8 +18,6 @@ export const workspaceTools: Array<{ type: WorkspaceNodeType; label: string; ico
   { type: "cameraConfig", label: "Camera", icon: Camera },
   { type: "imageOutput", label: "Image", icon: Image },
   { type: "videoOutput", label: "Video", icon: Video },
-  { type: "combiner", label: "Shot Builder", icon: Combine },
-  { type: "script", label: "Script", icon: ScrollText },
   { type: "preview", label: "Preview", icon: MonitorPlay }
 ]
 

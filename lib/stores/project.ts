@@ -20,6 +20,7 @@ import type {
   StyleCard,
   TextOverlayClip,
   TimelineClip,
+  TimelineTransition,
   TimelineTransitionType
 } from "@/lib/types"
 import { migrateWorkspaceSlots, useWorkspaceStore } from "@/lib/stores/workspace"
@@ -70,8 +71,11 @@ export interface ProjectStore {
   setProjectName: (name: string) => void
   addStyleCard: (styleCard: StyleCard) => void
   addCharacter: (character: Character) => void
+  addActionCard: (actionCard: ActionCard) => void
   importAsset: (asset: ProjectAsset) => void
   addAssetToTimeline: (assetId: string, trackId?: string, start?: number) => void
+  /** Append an ordered sequence of assets to the timeline as adjacent clips, with cut transitions between each pair. */
+  addAssetSequenceToTimeline: (assetIds: string[], transitionType?: TimelineTransitionType) => void
   addMediaClipToTimeline: (media: GeneratedTimelineMedia, trackId?: string, start?: number) => void
   renameTrack: (trackId: string, name: string) => void
   toggleTrack: (trackId: string, key: "muted" | "solo" | "locked" | "expanded") => void
@@ -118,7 +122,9 @@ export interface GeneratedTimelineMedia {
 }
 
 export const defaultCameraConfig: CameraConfig = {
-  lens: "35mm",
+  body: "full-frame-cine",
+  lens: "compact-anamorphic",
+  focalLength: "35",
   movement: "locked-off",
   angle: "eye-level",
   aperture: "f/2.8",
@@ -153,6 +159,30 @@ export const demoStyleCards: StyleCard[] = [
     keywords: ["sun", "dust", "35mm", "wide", "amber", "texture"],
     mood: "Expansive / Gritty / Human",
     palette: ["#FFB800", "#D05C26", "#293241", "#E0FBFC", "#111111"]
+  },
+  {
+    id: "style-sci-fi-sterile",
+    name: "Sterile Sci-Fi",
+    description: "White corridors, cold blue key light, polished surfaces, and a clinical sense of scale.",
+    referenceImages: [],
+    generatedImages: [
+      "linear-gradient(135deg, rgba(220,235,255,0.28), rgba(8,18,32,0.94), rgba(0,180,255,0.16))"
+    ],
+    keywords: ["sci-fi", "sterile", "blue", "future", "clinical", "corridor"],
+    mood: "Cold / Isolated / Controlled",
+    palette: ["#DCEBFF", "#00B4FF", "#0B1A2E", "#8FA3B8", "#F8FAFC"]
+  },
+  {
+    id: "style-doc-daylight",
+    name: "Daylight Documentary",
+    description: "Natural window light, handheld energy, true-to-life skin tones, and minimal stylization.",
+    referenceImages: [],
+    generatedImages: [
+      "linear-gradient(135deg, rgba(255,236,206,0.26), rgba(58,68,46,0.18), rgba(18,22,16,0.92))"
+    ],
+    keywords: ["documentary", "daylight", "natural", "handheld", "real", "window"],
+    mood: "Honest / Present / Grounded",
+    palette: ["#FFECC9", "#A38B5B", "#1A160E", "#3A442E", "#F4F1E8"]
   }
 ]
 
@@ -179,6 +209,28 @@ export const demoCharacters: Character[] = [
       "linear-gradient(135deg, rgba(255,184,0,0.22), rgba(28,24,19,0.95), rgba(0,229,255,0.1))"
     ],
     styleCardIds: ["style-neon-noir", "style-solar-western"]
+  },
+  {
+    id: "character-aris",
+    name: "Aris Thorne",
+    role: "Station Commander",
+    description: "Shaved head, grey uniform, calm voice, and a jaw set by years of protocol.",
+    emotions: ["Neutral", "Measured", "Concerned", "Authoritative"],
+    portraitUrls: [
+      "linear-gradient(135deg, rgba(220,235,255,0.22), rgba(8,18,32,0.95), rgba(0,180,255,0.18))"
+    ],
+    styleCardIds: ["style-sci-fi-sterile"]
+  },
+  {
+    id: "character-lupe",
+    name: "Lupe Medina",
+    role: "Field Journalist",
+    description: "Sun-lined face, linen shirt, recorder slung around the neck, always listening.",
+    emotions: ["Neutral", "Curious", "Skeptical", "Warm"],
+    portraitUrls: [
+      "linear-gradient(135deg, rgba(255,236,206,0.26), rgba(58,68,46,0.4), rgba(18,22,16,0.95))"
+    ],
+    styleCardIds: ["style-doc-daylight"]
   }
 ]
 
@@ -190,6 +242,38 @@ export const demoActionCards: ActionCard[] = [
     subject: "Mira Vale",
     action: "moves through the crowd while scanning for the signal",
     emotion: "alert, hunted, controlled"
+  },
+  {
+    id: "action-dead-drop",
+    title: "Dead Drop",
+    beat: "Mira palms a memory chip from a fish-tank ledge while pretending to read a menu.",
+    subject: "Mira Vale",
+    action: "reaches into the tank, freezes, then walks away clean",
+    emotion: "tense, focused, relieved"
+  },
+  {
+    id: "action-station-breach",
+    title: "Station Breach",
+    beat: "Aris overrides a sealed airlock as alarms strobe the corridor.",
+    subject: "Aris Thorne",
+    action: "types the override code, glances at the camera, and steps back",
+    emotion: "measured, urgent, grim"
+  },
+  {
+    id: "action-interview-listen",
+    title: "Interview Listen",
+    beat: "Lupe listens to a source describe a cover-up, recorder hidden in her bag.",
+    subject: "Lupe Medina",
+    action: "leans forward, nods slowly, eyes narrowing on the source's hands",
+    emotion: "curious, skeptical, still"
+  },
+  {
+    id: "action-cold-open-reveal",
+    title: "Cold Open Reveal",
+    beat: "A wide static frame reveals the aftermath before the title card lands.",
+    subject: "Location",
+    action: "holds on the empty room as light shifts across the floor",
+    emotion: "quiet, ominous, suspended"
   }
 ]
 
@@ -576,6 +660,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
     }),
   addStyleCard: (styleCard) => set((state) => ({ styleCards: [styleCard, ...state.styleCards] })),
   addCharacter: (character) => set((state) => ({ characters: [character, ...state.characters] })),
+  addActionCard: (actionCard) => set((state) => ({ actionCards: [actionCard, ...state.actionCards] })),
   importAsset: (asset) =>
     set((state) => ({
       assets: [asset, ...state.assets.filter((item) => item.id !== asset.id)]
@@ -602,6 +687,56 @@ export const useProjectStore = create<ProjectStore>((set) => ({
           ...state.editingState,
           clips: addClip(state.editingState.clips, clip),
           selectedClipId: clip.id
+        }
+      }
+    }),
+  addAssetSequenceToTimeline: (assetIds, transitionType = "cut") =>
+    set((state) => {
+      if (assetIds.length === 0) return state
+      // Resolve the first asset's compatible track; sequence stays on a single track
+      // to keep cut/dissolve transitions meaningful between adjacent clips.
+      const firstAsset = state.assets.find((item) => item.id === assetIds[0])
+      if (!firstAsset) return state
+      const compatibleType = firstAsset.type === "audio" ? "audio" : "video"
+      const track = state.editingState.tracks.find((item) => item.type === compatibleType && !item.locked)
+        ?? state.editingState.tracks.find((item) => item.type === compatibleType)
+      if (!track || track.locked) return state
+
+      let cursor = state.editingState.clips
+        .filter((clip) => clip.trackId === track.id)
+        .reduce((end, clip) => Math.max(end, clip.start + clip.duration), 0)
+
+      const newClips: TimelineClip[] = []
+      let newTransitions: TimelineTransition[] = state.editingState.transitions
+      let previousClipId: string | null = null
+
+      for (const assetId of assetIds) {
+        const asset = state.assets.find((item) => item.id === assetId)
+        if (!asset) continue
+        if (asset.type === "audio" !== (track.type === "audio")) continue
+        const draftClip = createClipFromAsset(asset, track.id, cursor)
+        const clip: TimelineClip = {
+          ...draftClip,
+          start: cursor
+        }
+        newClips.push(clip)
+        if (previousClipId) {
+          newTransitions = applyTransition(newTransitions, [...state.editingState.clips, ...newClips], previousClipId, clip.id, transitionType)
+        }
+        previousClipId = clip.id
+        cursor = clip.start + clip.duration
+      }
+
+      if (newClips.length === 0) return state
+
+      return {
+        editingState: {
+          ...state.editingState,
+          clips: [...state.editingState.clips, ...newClips].sort((a, b) =>
+            a.trackId.localeCompare(b.trackId) || a.start - b.start
+          ),
+          transitions: newTransitions,
+          selectedClipId: newClips[newClips.length - 1].id
         }
       }
     }),

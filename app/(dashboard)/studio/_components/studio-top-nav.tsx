@@ -18,7 +18,7 @@ import { useProjectStore } from "@/lib/stores/project"
 
 const tabLabels: Record<StudioTab, string> = {
   storyboard: "Storyboard",
-  workspace: "Cinema Workspace",
+  workspace: "Workspace",
   editing: "Editing",
   gallery: "Gallery",
   challenges: "Challenges"
@@ -197,7 +197,7 @@ export function StudioTopNav({ activeTab, userId, email, demoAuth = false }: Stu
           </button>
           <button
             type="button"
-            className="relative hidden h-9 w-9 place-items-center rounded-full text-text-secondary transition hover:bg-elevated hover:text-text-primary sm:grid"
+            className="relative hidden h-9 w-9 place-items-center rounded-full text-text-secondary transition hover:bg-elevated hover:text-text-primary lg:grid"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />

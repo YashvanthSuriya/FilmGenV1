@@ -1,7 +1,10 @@
 import { create } from "zustand"
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware"
 import { getStoryboardTemplate } from "@/lib/storyboard/templates"
+import { defaultCameraConfig, useProjectStore } from "@/lib/stores/project"
+import { convertUserCardToProjectCard } from "@/lib/workspace/cardBridge"
 import type {
+  CameraConfig,
   GenerationAspectRatio,
   GenerationAppliedCard,
   GenerationCardType,
@@ -32,6 +35,8 @@ export interface StoryboardComposerState {
   durationSeconds: VideoDurationSeconds
   referenceImages: GenerationReferenceImage[]
   appliedCardIds: string[]
+  /** Camera framing applied to every generation; carries over to Workspace on Send to Workspace. */
+  camera: CameraConfig
 }
 
 export interface StoryboardProjectState {
@@ -86,7 +91,8 @@ const defaultComposer: StoryboardComposerState = {
   videoSize: "1080p",
   durationSeconds: 5,
   referenceImages: [],
-  appliedCardIds: []
+  appliedCardIds: [],
+  camera: { ...defaultCameraConfig }
 }
 
 function createDefaultProjectState(): StoryboardProjectState {
@@ -173,7 +179,8 @@ function compactProjectForStorage(project: StoryboardProjectState): StoryboardPr
       ...defaultComposer,
       ...project.composer,
       referenceImages: [],
-      appliedCardIds: project.composer.appliedCardIds ?? []
+      appliedCardIds: project.composer.appliedCardIds ?? [],
+      camera: project.composer.camera ?? { ...defaultCameraConfig }
     },
     generations: project.generations.slice(0, MAX_GENERATIONS_PER_PROJECT).map(compactGeneration),
     cards: {
@@ -366,6 +373,29 @@ export const useStoryboardStore = create<StoryboardStore>()(
             }
           }))
         }))
+
+        // BRIDGE: also push the converted card into the project store so it appears
+        // in the Workspace node dropdowns (StyleCardNode, CharacterNode, ActionCardNode).
+        // The project store is the single source of truth for the workspace.
+        const converted = convertUserCardToProjectCard(card, input.type)
+        if (converted) {
+          const projectStore = useProjectStore.getState()
+          if (input.type === "style" && converted) {
+            // Replace if the ID already exists (re-save), otherwise prepend
+            const existingStyle = projectStore.styleCards.find((s) => s.id === converted.id)
+            const nextStyleCards = existingStyle
+              ? projectStore.styleCards.map((s) => (s.id === converted.id ? converted : s))
+              : [converted, ...projectStore.styleCards]
+            useProjectStore.setState({ styleCards: nextStyleCards as never })
+          } else if (input.type === "character" && converted) {
+            const existingChar = projectStore.characters.find((c) => c.id === converted.id)
+            const nextCharacters = existingChar
+              ? projectStore.characters.map((c) => (c.id === converted.id ? converted : c))
+              : [converted, ...projectStore.characters]
+            useProjectStore.setState({ characters: nextCharacters as never })
+          }
+        }
+
         return card
       },
       renameCard: (projectId, cardId, name, description) =>

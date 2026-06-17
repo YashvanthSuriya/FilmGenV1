@@ -194,3 +194,21 @@ button {
     stroke-dashoffset: 0;
   }
 }
+
+/* Smooth fade-in transition when switching studio tabs.
+   The studio page wraps each tab's content in a div keyed by the active tab,
+   so React remounts on tab change and this animation plays on mount. */
+@keyframes studio-tab-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.studio-tab-transition {
+  animation: studio-tab-fade-in 200ms var(--ease-standard);
+}

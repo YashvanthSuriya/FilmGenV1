@@ -1,13 +1,18 @@
 "use client"
 
 import type { NodeProps } from "@xyflow/react"
-import { AlertTriangle, Download, Loader2, Play, Send, Video } from "lucide-react"
+import { AlertTriangle, Download, Play, Send, Video } from "lucide-react"
 import { useMemo, type MouseEvent } from "react"
 import { useProjectStore } from "@/lib/stores/project"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { WorkspaceNode } from "@/lib/types"
 import { analyzeWorkspaceOutput, createWorkspaceMockAsset } from "@/lib/workspace/workflowRun"
+import { upstreamSignature } from "@/lib/workspace/upstreamSignature"
+import { ImageGeneration } from "@/components/ui/ai-chat-image-generation-1"
 import { BaseNode } from "./BaseNode"
+import { CompiledPromptPreview } from "./CompiledPromptPreview"
+import { ModelSelector } from "./ModelSelector"
+import { videoModels } from "@/lib/workspace/modelRegistry"
 
 export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
   const nodes = useWorkspaceStore((state) => state.nodes)
@@ -19,9 +24,13 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
   const actionCards = useProjectStore((state) => state.actionCards)
   const importAsset = useProjectStore((state) => state.importAsset)
   const addAssetToTimeline = useProjectStore((state) => state.addAssetToTimeline)
+
+  // Scope the recompute to THIS node's upstream subgraph only (prevents preview shift).
+  const sig = useMemo(() => upstreamSignature(id, nodes, edges), [id, nodes, edges])
   const analysis = useMemo(
     () => analyzeWorkspaceOutput(id, { nodes, edges, styleCards, characters, actionCards }),
-    [actionCards, characters, edges, id, nodes, styleCards]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sig, styleCards, characters, actionCards, id]
   )
   const isGenerating = data.status === "generating"
   const previewUrl = typeof data.previewUrl === "string" ? data.previewUrl : ""
@@ -59,6 +68,7 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
         compiledPrompt: nextAnalysis.compiledPrompt,
         mediaType: "videoOutput"
       })
+      asset.prompt = nextAnalysis.compiledPrompt
       importAsset(asset)
       updateNode(id, {
         status: "completed",
@@ -68,7 +78,7 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
         lastRunAt: asset.createdAt,
         errorMessage: undefined
       })
-    }, 520)
+    }, 8500)
   }
 
   function sendToEditing(event: MouseEvent<HTMLButtonElement>) {
@@ -77,18 +87,25 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
   }
 
   return (
-    <BaseNode id={id} icon={Video} label="Video Output" selected={selected} status={data.status} className="w-[300px]" footer={<span>{data.assetId ? "Clip ready" : "Local mock"}</span>}>
-      <div className="overflow-hidden rounded-[var(--radius-sm)] border border-border bg-background">
+    <BaseNode id={id} icon={Video} label="Video Output" selected={selected} status={data.status} className="w-[300px]" footer={<span>{data.assetId ? "Clip ready" : "Local mock"}</span>} nodeType="videoOutput">
+      <ImageGeneration isGenerating={isGenerating} label={data.label}>
         <div className="relative grid aspect-video place-items-center bg-elevated bg-cover bg-center text-xs text-text-muted" style={previewStyle}>
-          {!previewUrl ? <span>{isGenerating ? "Creating motion mock..." : "Run video to create a timeline asset"}</span> : null}
-          {isGenerating ? (
-            <div className="absolute inset-0 grid place-items-center bg-black/42">
-              <Loader2 className="h-7 w-7 animate-spin text-accent-cyan" />
-            </div>
-          ) : null}
+          {!previewUrl ? <span>{isGenerating ? "" : "Run video to create a timeline asset"}</span> : null}
         </div>
-        <div className="space-y-2 p-2">
-          <p className="line-clamp-2 text-xs text-text-secondary">{(data.output ?? analysis.compiledPrompt) || "Connect a generated frame, prompt, script, or camera node to build this clip."}</p>
+      </ImageGeneration>
+      <div className="space-y-2 p-2">
+          <CompiledPromptPreview prompt={analysis.compiledPrompt} />
+
+          {/* Model selector + model-specific features */}
+          <ModelSelector
+            nodeId={id}
+            modelId={data.modelId}
+            modelParams={data.modelParams}
+            models={videoModels}
+            onChangeModel={(modelId) => updateNode(id, { modelId })}
+            onChangeParam={(key, value) => updateNode(id, { modelParams: { ...(data.modelParams ?? {}), [key]: value } })}
+          />
+          <p className="line-clamp-2 text-xs text-text-secondary">{data.output ?? "Connect a generated frame, prompt, script, or camera node to build this clip."}</p>
           {data.errorMessage ? (
             <p className="flex gap-1.5 rounded border border-accent-red/40 bg-accent-red-dim p-2 text-[11px] leading-4 text-accent-red">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -107,8 +124,8 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
               disabled={isGenerating}
               className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] bg-accent-cyan px-2.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-              Run Video
+              <Play className="h-3.5 w-3.5" />
+              {isGenerating ? "Generating..." : "Run Video"}
             </button>
             <button
               type="button"
@@ -132,7 +149,6 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
             ) : null}
           </div>
         </div>
-      </div>
     </BaseNode>
   )
 }

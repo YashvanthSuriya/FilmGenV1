@@ -6,14 +6,26 @@ import { useProjectStore } from "@/lib/stores/project"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import type { WorkspaceNode } from "@/lib/types"
 import { BaseNode } from "./BaseNode"
+import { NodeImageUploader } from "./NodeImageUploader"
 
 export function CharacterNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
   const characters = useProjectStore((state) => state.characters)
   const updateNode = useWorkspaceStore((state) => state.updateNode)
   const character = characters.find((item) => item.id === data.characterId)
 
+  const attachedIds = data.attachedImageIds ?? []
+
+  function attachImage(assetId: string) {
+    const next = attachedIds.includes(assetId) ? attachedIds : [...attachedIds, assetId]
+    updateNode(id, { attachedImageIds: next })
+  }
+
+  function removeImage(assetId: string) {
+    updateNode(id, { attachedImageIds: attachedIds.filter((x) => x !== assetId) })
+  }
+
   return (
-    <BaseNode id={id} icon={UserRound} label="Character" selected={selected} status={data.status}>
+    <BaseNode id={id} icon={UserRound} label="Character" selected={selected} status={data.status} nodeType="character">
       <select
         value={data.characterId ?? ""}
         onChange={(event) => updateNode(id, { characterId: event.target.value || undefined })}
@@ -27,6 +39,15 @@ export function CharacterNode({ id, data, selected }: NodeProps<WorkspaceNode>) 
         ))}
       </select>
       <p className="line-clamp-3 text-xs">{character ? `${character.role}: ${character.description}` : "Create a character in Storyboard to connect cast intent."}</p>
+
+      {/* Manual image upload — drag-and-drop or click-to-select */}
+      <NodeImageUploader
+        attachedAssetIds={attachedIds}
+        onAttach={attachImage}
+        onRemove={removeImage}
+        label="Reference images (optional)"
+        compact
+      />
     </BaseNode>
   )
 }
