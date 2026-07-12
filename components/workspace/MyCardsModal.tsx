@@ -69,7 +69,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[1.2rem] border border-border-subtle bg-surface shadow-2xl">
         <header className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-accent-cyan-dim text-accent-cyan">
+            <div className="grid h-9 w-9 place-items-center rounded-(--radius-md) bg-accent-cyan-dim text-accent-cyan">
               <Layers3 className="h-4 w-4" />
             </div>
             <div>
@@ -81,7 +81,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-[var(--radius-md)] bg-accent-cyan px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition hover:brightness-110"
+              className="flex h-8 items-center gap-1.5 rounded-(--radius-md) bg-accent-cyan px-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-black transition hover:brightness-110"
             >
               <Plus className="h-3.5 w-3.5" />
               Create
@@ -107,7 +107,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
                 type="button"
                 onClick={() => setActiveCategory(value)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] px-3 text-[11px] font-semibold uppercase tracking-[0.06em] transition",
+                  "flex h-8 items-center gap-1.5 rounded-(--radius-sm) px-3 text-[11px] font-semibold uppercase tracking-[0.06em] transition",
                   activeCategory === value ? "bg-accent-cyan text-black" : "text-text-secondary hover:bg-elevated hover:text-text-primary"
                 )}
               >
@@ -122,7 +122,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
         {/* Cards list */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <div className="grid min-h-[200px] place-items-center rounded-[var(--radius-md)] border border-dashed border-border-subtle p-6 text-center">
+            <div className="grid min-h-[200px] place-items-center rounded-(--radius-md) border border-dashed border-border-subtle p-6 text-center">
               <div>
                 <p className="font-heading text-sm font-semibold text-text-primary">No {activeCategory} cards yet</p>
                 <p className="mt-1 text-[11px] text-text-secondary">Generate images in the Storyboard tab and save them to a library to create cards.</p>
@@ -133,7 +133,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-background p-2.5 transition hover:border-accent-cyan/40"
+                  className="flex items-center gap-3 rounded-(--radius-md) border border-border-subtle bg-background p-2.5 transition hover:border-accent-cyan/40"
                 >
                   {item.thumbnail ? (
                     <div
@@ -156,7 +156,7 @@ export function MyCardsModal({ open, onClose }: { open: boolean; onClose: () => 
                   <button
                     type="button"
                     onClick={() => addToWorkspace(activeCategory, item.id, item.name)}
-                    className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-sm)] bg-accent-cyan px-3 text-[11px] font-semibold text-black transition hover:brightness-110"
+                    className="flex h-8 shrink-0 items-center gap-1.5 rounded-(--radius-sm) bg-accent-cyan px-3 text-[11px] font-semibold text-black transition hover:brightness-110"
                   >
                     Add to canvas
                   </button>

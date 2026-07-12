@@ -51,13 +51,13 @@ export function PropertiesPanel() {
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <div className="rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
+              <div className="rounded-(--radius-md) border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
                 {selectedNode.data.status ?? "idle"}
               </div>
             </div>
             <div className="space-y-2">
               <Label>Node Type</Label>
-              <div className="rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
+              <div className="rounded-(--radius-md) border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
                 {selectedNode.type}
               </div>
             </div>
@@ -67,13 +67,13 @@ export function PropertiesPanel() {
                 value={selectedNode.data.output ?? ""}
                 onChange={(event) => updateNode(selectedNode.id, { output: event.target.value })}
                 placeholder="Static demo output notes"
-                className="min-h-28 w-full resize-none rounded-[var(--radius-md)] border border-border bg-elevated p-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
+                className="min-h-28 w-full resize-none rounded-(--radius-md) border border-border bg-elevated p-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
             </div>
             {selectedNode.data.errorMessage ? (
               <div className="space-y-2">
                 <Label>Error</Label>
-                <div className="rounded-[var(--radius-md)] border border-accent-red/40 bg-accent-red-dim px-3 py-2 text-sm text-accent-red">
+                <div className="rounded-(--radius-md) border border-accent-red/40 bg-accent-red-dim px-3 py-2 text-sm text-accent-red">
                   {selectedNode.data.errorMessage}
                 </div>
               </div>
@@ -84,14 +84,14 @@ export function PropertiesPanel() {
                 <textarea
                   value={selectedNode.data.compiledPrompt}
                   onChange={(event) => updateNode(selectedNode.id, { compiledPrompt: event.target.value })}
-                  className="min-h-36 w-full resize-none rounded-[var(--radius-md)] border border-border bg-background p-3 text-sm text-text-secondary outline-none focus:border-accent-cyan"
+                  className="min-h-36 w-full resize-none rounded-(--radius-md) border border-border bg-background p-3 text-sm text-text-secondary outline-none focus:border-accent-cyan"
                 />
               </div>
             ) : null}
             {selectedNode.data.assetId ? (
               <div className="space-y-2">
                 <Label>Generated Asset</Label>
-                <div className="space-y-1 rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
+                <div className="space-y-1 rounded-(--radius-md) border border-border bg-elevated px-3 py-2 text-sm text-text-secondary">
                   <p className="break-all">{selectedNode.data.assetId}</p>
                   {selectedNode.data.lastRunAt ? <p className="text-xs text-text-muted">{selectedNode.data.lastRunAt}</p> : null}
                 </div>

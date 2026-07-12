@@ -129,7 +129,7 @@ export function PreviewNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
   return (
     <BaseNode id={id} icon={MonitorPlay} label="Preview" selected={selected} status={data.status} className="w-[360px]" footer={<span>{readyCount}/{totalCount} ready</span>} nodeType="preview">
       <div className="space-y-3">
-        <div className="grid aspect-video grid-cols-2 gap-1 overflow-hidden rounded-[var(--radius-sm)] border border-border bg-background p-1">
+        <div className="grid aspect-video grid-cols-2 gap-1 overflow-hidden rounded-(--radius-sm) border border-border bg-background p-1">
           {orderedOutputs.length > 0 ? (
             orderedOutputs.slice(0, 4).map((node, index) => {
               const asset = node.data.assetId ? assetById.get(node.data.assetId) : undefined
@@ -165,7 +165,7 @@ export function PreviewNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
         </div>
 
         {/* Sequence controls */}
-        <div className="space-y-2 rounded-[var(--radius-sm)] border border-border-subtle bg-background p-2">
+        <div className="space-y-2 rounded-(--radius-sm) border border-border-subtle bg-background p-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted">Sequence order</span>
             <span className="text-[10px] text-text-secondary">By Y position (top → bottom)</span>
@@ -186,7 +186,7 @@ export function PreviewNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
         </div>
 
         {runProgress ? (
-          <div className="rounded-[var(--radius-sm)] border border-accent-cyan/30 bg-accent-cyan-dim p-2 text-[11px] text-accent-cyan">
+          <div className="rounded-(--radius-sm) border border-accent-cyan/30 bg-accent-cyan-dim p-2 text-[11px] text-accent-cyan">
             <div className="flex items-center justify-between">
               <span>Running all outputs…</span>
               <span>{runProgress.current}/{runProgress.total}</span>
@@ -207,7 +207,7 @@ export function PreviewNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
             type="button"
             onClick={(event) => runAll(event, event.shiftKey)}
             disabled={runningAll || orderedOutputs.length === 0}
-            className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] bg-accent-cyan px-2.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-8 items-center gap-1.5 rounded-(--radius-sm) bg-accent-cyan px-2.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             title="Run all un-run outputs. Shift-click to re-run every output (force)."
           >
             {runningAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
@@ -217,7 +217,7 @@ export function PreviewNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
             type="button"
             onClick={sendSequenceToEditing}
             disabled={readyCount === 0}
-            className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] border border-border bg-background px-2.5 text-xs text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 items-center gap-1.5 rounded-(--radius-sm) border border-border bg-background px-2.5 text-xs text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send className="h-3.5 w-3.5" />
             Send sequence

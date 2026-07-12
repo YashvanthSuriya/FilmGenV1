@@ -122,7 +122,7 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
               type="button"
               onClick={runVideo}
               disabled={isGenerating}
-              className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] bg-accent-cyan px-2.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-8 items-center gap-1.5 rounded-(--radius-sm) bg-accent-cyan px-2.5 text-xs font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Play className="h-3.5 w-3.5" />
               {isGenerating ? "Generating..." : "Run Video"}
@@ -131,7 +131,7 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
               type="button"
               onClick={sendToEditing}
               disabled={!data.assetId}
-              className="flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] border border-border bg-background px-2.5 text-xs text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 items-center gap-1.5 rounded-(--radius-sm) border border-border bg-background px-2.5 text-xs text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
               Editing
@@ -140,7 +140,7 @@ export function VideoOutputNode({ id, data, selected }: NodeProps<WorkspaceNode>
               <a
                 href={previewUrl}
                 download={`${String(data.label ?? "workspace-video").replace(/\s+/g, "-").toLowerCase()}-poster.svg`}
-                className="grid h-8 w-8 place-items-center rounded-[var(--radius-sm)] border border-border bg-background text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan"
+                className="grid h-8 w-8 place-items-center rounded-(--radius-sm) border border-border bg-background text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan"
                 onClick={(event) => event.stopPropagation()}
                 aria-label="Download video poster"
               >

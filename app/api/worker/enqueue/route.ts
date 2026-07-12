@@ -4,7 +4,7 @@ import { z } from "zod"
 
 const enqueueRequestSchema = z.object({
   jobType: z.enum(["generate-image", "generate-video", "export-video", "sync-project"]),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 })
 
 export async function POST(req: Request) {

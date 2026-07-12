@@ -1,4 +1,4 @@
-# FilmGenV1 / Cine Studio Current Handoff Report
+# FilmGenV1 / FilmGen Current Handoff Report
 
 Last updated: 2026-06-17 (V7FilmGen)
 

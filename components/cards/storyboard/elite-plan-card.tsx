@@ -49,7 +49,7 @@ export const ElitePlanCard = React.forwardRef<HTMLDivElement, ElitePlanCardProps
       >
         <motion.div className="relative h-52 w-full overflow-hidden" whileHover={{ scale: 1.05 }} transition={{ duration: 0.45 }} style={{ background: fallbackBackground }}>
           <img src={imageUrl} alt={title} className="h-full w-full object-cover opacity-90" onError={(event) => { event.currentTarget.style.display = "none" }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-white/10" />
+          <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-white/10" />
           <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-white/[0.12] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/82 backdrop-blur-md">
             {subtitle}
           </div>
@@ -62,7 +62,7 @@ export const ElitePlanCard = React.forwardRef<HTMLDivElement, ElitePlanCardProps
           {highlights.length > 0 ? (
             <ul className="mt-4 grid grid-cols-2 gap-2 text-xs text-white/58">
               {highlights.map((item) => (
-                <li key={item} className="flex items-center gap-2 rounded-[var(--radius-md)] border border-white/10 bg-white/[0.08] px-2 py-1">
+                <li key={item} className="flex items-center gap-2 rounded-(--radius-md) border border-white/10 bg-white/[0.08] px-2 py-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-accent-cyan" />
                   <span className="truncate">{item}</span>
                 </li>

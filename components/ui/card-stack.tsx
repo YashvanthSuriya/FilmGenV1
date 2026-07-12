@@ -345,7 +345,7 @@ export function CardStack<T extends CardStackItem>({
         </div>
 
         {showArrows && len > 1 ? (
-          <div className="pointer-events-none absolute inset-x-2 top-1/2 z-[140] flex -translate-y-1/2 justify-between">
+          <div className="pointer-events-none absolute inset-x-2 top-1/2 z-140 flex -translate-y-1/2 justify-between">
             <button
               type="button"
               onClick={prev}
@@ -427,7 +427,7 @@ function DefaultFanCard({ item }: { item: CardStackItem; active: boolean }) {
       </div>
 
       {/* subtle gradient overlay at bottom for text readability */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
 
       {/* content */}
       <div className="relative z-10 flex h-full flex-col justify-end p-5">

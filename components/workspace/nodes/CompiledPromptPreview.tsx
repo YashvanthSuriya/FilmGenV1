@@ -9,7 +9,7 @@ export function CompiledPromptPreview({ prompt }: { prompt: string }) {
     // Reserve space even when empty so the node height doesn't jump when a prompt
     // gets added/removed during graph edits (e.g. connecting/disconnecting a Style node).
     return (
-      <div className="min-h-[58px] rounded-[var(--radius-sm)] border border-dashed border-border-subtle bg-background p-2">
+      <div className="min-h-[58px] rounded-(--radius-sm) border border-dashed border-border-subtle bg-background p-2">
         <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-text-muted">
           <FileText className="h-3 w-3" />
           Compiled prompt
@@ -22,7 +22,7 @@ export function CompiledPromptPreview({ prompt }: { prompt: string }) {
   const preview = prompt.length > 140 ? `${prompt.slice(0, 140)}…` : prompt
 
   return (
-    <div className="min-h-[58px] rounded-[var(--radius-sm)] border border-border-subtle bg-background p-2">
+    <div className="min-h-[58px] rounded-(--radius-sm) border border-border-subtle bg-background p-2">
       <button
         type="button"
         onClick={(event) => {

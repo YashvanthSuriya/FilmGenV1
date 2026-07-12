@@ -19,7 +19,7 @@ export default function StudioSettingsPage() {
               <button
                 key={label}
                 type="button"
-                className={`flex h-10 shrink-0 items-center gap-2 rounded-[var(--radius-md)] px-3 text-left font-heading text-xs font-semibold uppercase tracking-[0.08em] transition ${
+                className={`flex h-10 shrink-0 items-center gap-2 rounded-(--radius-md) px-3 text-left font-heading text-xs font-semibold uppercase tracking-[0.08em] transition ${
                   index === 0
                     ? "bg-accent-cyan-dim text-accent-cyan"
                     : "text-text-secondary hover:bg-elevated hover:text-text-primary"

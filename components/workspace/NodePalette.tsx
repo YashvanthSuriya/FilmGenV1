@@ -34,7 +34,7 @@ export function NodePalette({ onAddNode, className }: { onAddNode: (type: Worksp
             key={tool.type}
             type="button"
             onClick={() => onAddNode(tool.type)}
-            className="flex h-10 w-full items-center gap-2 rounded-[var(--radius-md)] px-2 text-left text-text-secondary transition hover:bg-elevated hover:text-accent-cyan max-md:h-12 max-md:w-[68px] max-md:flex-col max-md:justify-center max-md:gap-1 max-md:px-1"
+            className="flex h-10 w-full items-center gap-2 rounded-(--radius-md) px-2 text-left text-text-secondary transition hover:bg-elevated hover:text-accent-cyan max-md:h-12 max-md:w-[68px] max-md:flex-col max-md:justify-center max-md:gap-1 max-md:px-1"
             title={tool.label}
             aria-label={`Add ${tool.label} node`}
           >

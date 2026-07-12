@@ -177,7 +177,7 @@ export function CreateCardModal({ open, onClose }: { open: boolean; onClose: () 
           {/* Card type selector */}
           <div>
             <label className="mb-1.5 block text-[10px] uppercase tracking-[0.06em] text-text-muted">Card type</label>
-            <div className="inline-flex w-full overflow-hidden rounded-[var(--radius-md)] border border-border-subtle">
+            <div className="inline-flex w-full overflow-hidden rounded-(--radius-md) border border-border-subtle">
               {cardTypeOptions.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
@@ -335,7 +335,7 @@ export function CreateCardModal({ open, onClose }: { open: boolean; onClose: () 
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-[var(--radius-md)] border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-elevated"
+            className="rounded-(--radius-md) border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-elevated"
           >
             Cancel
           </button>
@@ -343,7 +343,7 @@ export function CreateCardModal({ open, onClose }: { open: boolean; onClose: () 
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-(--radius-md) bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             Create card

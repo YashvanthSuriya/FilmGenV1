@@ -7,7 +7,7 @@ const generateRequestSchema = z.object({
   projectId: z.string().min(1).optional(),
   prompt: z.string().min(1),
   model: z.string().min(1).optional(),
-  params: z.record(z.unknown()).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function POST(req: Request) {

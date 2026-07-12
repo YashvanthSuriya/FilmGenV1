@@ -29,7 +29,7 @@ export function CharacterNode({ id, data, selected }: NodeProps<WorkspaceNode>) 
       <select
         value={data.characterId ?? ""}
         onChange={(event) => updateNode(id, { characterId: event.target.value || undefined })}
-        className="h-9 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-sm text-text-primary outline-none"
+        className="h-9 w-full rounded-(--radius-sm) border border-border bg-background px-2 text-sm text-text-primary outline-none"
       >
         <option value="">Select character</option>
         {characters.map((item) => (

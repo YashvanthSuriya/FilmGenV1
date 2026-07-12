@@ -61,7 +61,7 @@ export const ImageGeneration: React.FC<ImageGenerationProps> = (
     return (
       <div className={cn("flex flex-col gap-2")}>
         <motion.span
-          className="bg-[linear-gradient(110deg,var(--color-muted-foreground),35%,var(--color-foreground),50%,var(--color-muted-foreground),75%,var(--color-muted-foreground))] bg-[length:200%_100%] bg-clip-text text-transparent text-sm font-medium"
+          className="bg-[linear-gradient(110deg,var(--color-muted-foreground),35%,var(--color-foreground),50%,var(--color-muted-foreground),75%,var(--color-muted-foreground))] bg-size-[200%_100%] bg-clip-text text-transparent text-sm font-medium"
           initial={{ backgroundPosition: "200% 0" }}
           animate={{
             backgroundPosition:
@@ -80,7 +80,7 @@ export const ImageGeneration: React.FC<ImageGenerationProps> = (
         <div className={cn("relative max-w-[360px] overflow-hidden rounded-xl border bg-card")}>
             {children}
           <motion.div
-            className="absolute w-full h-[125%] -top-[25%] pointer-events-none backdrop-blur-3xl"
+            className="absolute w-full h-[125%] top-[-25%] pointer-events-none backdrop-blur-3xl"
             initial={false}
             animate={{
               clipPath: `polygon(0 ${resolvedProgress}%, 100% ${resolvedProgress}%, 100% 100%, 0 100%)`,

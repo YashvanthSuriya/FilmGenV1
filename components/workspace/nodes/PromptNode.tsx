@@ -14,7 +14,7 @@ export function PromptNode({ id, data, selected }: NodeProps<WorkspaceNode>) {
         value={data.prompt ?? ""}
         onChange={(event) => updateNode(id, { prompt: event.target.value })}
         placeholder="Describe the shot..."
-        className="min-h-20 w-full resize-none rounded-[var(--radius-sm)] border border-border bg-background p-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
+        className="min-h-20 w-full resize-none rounded-(--radius-sm) border border-border bg-background p-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
       />
     </BaseNode>
   )

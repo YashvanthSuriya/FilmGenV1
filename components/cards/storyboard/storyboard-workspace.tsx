@@ -1012,13 +1012,13 @@ function MediaPoster({ media, className = "" }: { media: PosterMedia; className?
       ) : (
         <>
           <div className="absolute inset-0" style={{ background: posterBackground(media) }} />
-          <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:42px_42px]" />
+          <div className="absolute inset-0 opacity-[0.18] bg-[linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[42px_42px]" />
           <div className="absolute -left-10 top-5 h-36 w-36 rounded-full blur-3xl" style={{ background: palette.a }} />
           <div className="absolute bottom-0 right-0 h-44 w-44 rounded-full blur-3xl" style={{ background: palette.b }} />
           <div className="absolute right-[9%] top-[10%] h-[32%] w-[24%] rounded-full border border-white/[0.10] bg-white/[0.055] shadow-[inset_0_1px_18px_rgba(255,255,255,0.10)] backdrop-blur-md" />
           <div className="absolute left-[10%] top-[18%] h-[52%] w-[58%] rounded-[999px] border border-white/[0.06] bg-white/[0.035] blur-sm" />
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10)_0%,transparent_34%,rgba(0,0,0,0.30)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/42 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/42 to-transparent" />
           <div className="absolute inset-px rounded-[inherit] border border-white/[0.08] shadow-[inset_0_1px_28px_rgba(255,255,255,0.06)]" />
         </>
       )}
@@ -1091,7 +1091,7 @@ function StoryboardHeroStackCard({
   return (
     <div className={`relative h-full w-full overflow-hidden border bg-black shadow-2xl ${active ? "border-accent-cyan" : "border-white/[0.12]"}`}>
       <MediaPoster media={item.media} className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/12 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/78 via-black/12 to-transparent" />
       <div className="absolute left-3 top-3 border border-white/[0.12] bg-black/70 px-2 py-1 font-heading text-[10px] uppercase tracking-[0.12em] text-white/70">
         {item.pending ? `${Math.round(progress)}%` : item.tag}
       </div>
@@ -1207,7 +1207,7 @@ function GenerationComposer({
       {mode === "image" ? (
         <div className="mb-2 flex flex-col items-center gap-0.5">
           <p className="text-[9px] uppercase tracking-[0.1em] text-white/40">Generation type — what you're creating</p>
-          <div className="inline-flex items-stretch overflow-hidden rounded-[var(--radius-md)] border border-white/[0.12] bg-[#0e1216]/95 p-0.5 shadow-lg shadow-black/30 backdrop-blur">
+          <div className="inline-flex items-stretch overflow-hidden rounded-(--radius-md) border border-white/[0.12] bg-[#0e1216]/95 p-0.5 shadow-lg shadow-black/30 backdrop-blur">
             {cardTypes.map(({ value, label, shortLabel, icon: Icon }) => {
               const active = cardType === value
               return (
@@ -1974,7 +1974,7 @@ function MediaGalleryCard({
   const isVideo = mediaType === "video"
   const openLabel = isVideo ? "Open video" : "View generation"
   const openAction = isVideo ? onPlay : onDetail
-  const cardAspect = density === "compact" ? "aspect-[4/3]" : "aspect-[1.28/1]"
+  const cardAspect = density === "compact" ? "aspect-4/3" : "aspect-[1.28/1]"
   const titleClass = density === "compact" ? "line-clamp-1 font-heading text-sm font-bold leading-tight text-white" : "line-clamp-2 font-heading text-base font-bold leading-tight text-white"
 
   return (
@@ -2187,7 +2187,7 @@ function AddToLibraryModal({
 
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(event) => trapFocus(event, modalRef.current, onClose)} className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md">
-      <section className="w-full max-w-2xl rounded-[var(--radius-lg)] border border-border-subtle bg-[#07090b] p-5 shadow-2xl">
+      <section className="w-full max-w-2xl rounded-(--radius-lg) border border-border-subtle bg-[#07090b] p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-heading text-xs font-semibold uppercase tracking-[0.12em] text-accent-cyan">Add to Library</p>
@@ -2200,20 +2200,20 @@ function AddToLibraryModal({
         <div className="mt-5 grid gap-4">
           <label className="grid gap-2 text-sm text-text-secondary">
             Card type
-            <select value={modal.type} onChange={(event) => onTypeChange(event.target.value as GenerationLibraryType)} className="h-11 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-text-primary outline-none">
+            <select value={modal.type} onChange={(event) => onTypeChange(event.target.value as GenerationLibraryType)} className="h-11 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-text-primary outline-none">
               <option value="style">Style Card</option>
               <option value="storyboard">Storyboard</option>
               <option value="character">Character Sheet</option>
             </select>
           </label>
-          <div className="flex rounded-[var(--radius-md)] border border-border bg-surface p-1">
+          <div className="flex rounded-(--radius-md) border border-border bg-surface p-1">
             <button type="button" onClick={() => setMode("existing")} disabled={cards[modal.type].length === 0} className={`h-9 flex-1 rounded px-3 text-sm ${mode === "existing" ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary disabled:opacity-40"}`}>Existing</button>
             <button type="button" onClick={() => setMode("new")} className={`h-9 flex-1 rounded px-3 text-sm ${mode === "new" ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary"}`}>Create New</button>
           </div>
           {mode === "existing" ? (
             <label className="grid gap-2 text-sm text-text-secondary">
               Existing card
-              <select value={existingCardId} onChange={(event) => setExistingCardId(event.target.value)} className="h-11 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-text-primary outline-none">
+              <select value={existingCardId} onChange={(event) => setExistingCardId(event.target.value)} className="h-11 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-text-primary outline-none">
                 {cards[modal.type].map((card) => (
                   <option key={card.id} value={card.id}>{card.name}</option>
                 ))}
@@ -2223,11 +2223,11 @@ function AddToLibraryModal({
             <>
               <label className="grid gap-2 text-sm text-text-secondary">
                 Name
-                <input value={name} onChange={(event) => setName(event.target.value)} className="h-11 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-text-primary outline-none focus:border-accent-cyan" />
+                <input value={name} onChange={(event) => setName(event.target.value)} className="h-11 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-text-primary outline-none focus:border-accent-cyan" />
               </label>
               <label className="grid gap-2 text-sm text-text-secondary">
                 Description
-                <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 py-2 text-text-primary outline-none focus:border-accent-cyan" />
+                <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-(--radius-md) border border-border-subtle bg-surface px-3 py-2 text-text-primary outline-none focus:border-accent-cyan" />
               </label>
             </>
           )}
@@ -2312,12 +2312,12 @@ function GeneratedVideoPlayerOverlay({
   }
 
   return (
-    <div ref={playerRef} role="dialog" aria-modal="true" aria-label="Generated video player" tabIndex={-1} onKeyDown={(event) => trapFocus(event, playerRef.current, onClose)} className="fixed inset-0 z-[60] grid place-items-center bg-black p-4">
+    <div ref={playerRef} role="dialog" aria-modal="true" aria-label="Generated video player" tabIndex={-1} onKeyDown={(event) => trapFocus(event, playerRef.current, onClose)} className="fixed inset-0 z-60 grid place-items-center bg-black p-4">
       <button type="button" onClick={onClose} className="absolute right-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-accent-cyan hover:text-accent-cyan" aria-label="Close video player">
         <X className="h-4 w-4" />
       </button>
 
-      <div className={`${fullscreen ? "h-full w-full" : "w-[min(90vw,980px)]"} max-h-[calc(100vh-2rem)] overflow-hidden rounded-[var(--radius-lg)] border border-white/10 bg-[#030506] shadow-2xl`}>
+      <div className={`${fullscreen ? "h-full w-full" : "w-[min(90vw,980px)]"} max-h-[calc(100vh-2rem)] overflow-hidden rounded-(--radius-lg) border border-white/10 bg-[#030506] shadow-2xl`}>
         <div className="relative aspect-video bg-black">
           {generation.videoUrl ? (
             <video src={generation.videoUrl} poster={isDisplayableImageUrl(generation.imageUrl) ? generation.imageUrl : undefined} controls autoPlay className="absolute inset-0 h-full w-full bg-black object-contain" />
@@ -2325,7 +2325,7 @@ function GeneratedVideoPlayerOverlay({
             <>
               <VideoPreviewArtwork generation={generation} active={playing && !complete} className="absolute inset-0 h-full w-full" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(0,229,255,0.24),transparent_28%),linear-gradient(120deg,rgba(0,0,0,0.16),rgba(0,0,0,0.72))]" />
-              <div className="absolute inset-0 opacity-45 [background-image:linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:48px_48px]" />
+              <div className="absolute inset-0 opacity-45 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[48px_48px]" />
               <div className="absolute inset-0 grid place-items-center px-6 text-center">
                 {loading ? (
                   <div className="grid place-items-center gap-3 text-accent-cyan">
@@ -2336,7 +2336,7 @@ function GeneratedVideoPlayerOverlay({
                   <div>
                     <h2 className="font-heading text-2xl font-bold text-white md:text-3xl">{cardTypeLabel(generation.cardType)}</h2>
                     <p className="mt-2 text-sm text-white/60">Preview complete</p>
-                    <button type="button" onClick={replay} className="mt-4 inline-flex h-10 items-center gap-2 rounded-[var(--radius-md)] bg-white px-3.5 font-heading text-xs font-bold uppercase tracking-[0.08em] text-black">
+                    <button type="button" onClick={replay} className="mt-4 inline-flex h-10 items-center gap-2 rounded-(--radius-md) bg-white px-3.5 font-heading text-xs font-bold uppercase tracking-[0.08em] text-black">
                       <RotateCcw className="h-4 w-4" />
                       Replay
                     </button>
@@ -2356,7 +2356,7 @@ function GeneratedVideoPlayerOverlay({
         </div>
 
         <div className="grid gap-3 border-t border-white/10 bg-black/80 p-3 md:grid-cols-[auto_1fr_auto_auto] md:items-center">
-          <button type="button" disabled={hasVideoUrl || loading || complete} onClick={() => setPlaying((value) => !value)} className="inline-flex h-9 w-fit min-w-24 items-center justify-center gap-2 justify-self-start rounded-[var(--radius-md)] bg-white px-4 text-xs font-semibold text-black disabled:opacity-50">
+          <button type="button" disabled={hasVideoUrl || loading || complete} onClick={() => setPlaying((value) => !value)} className="inline-flex h-9 w-fit min-w-24 items-center justify-center gap-2 justify-self-start rounded-(--radius-md) bg-white px-4 text-xs font-semibold text-black disabled:opacity-50">
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
             {playing ? "Pause" : "Play"}
           </button>
@@ -2368,14 +2368,14 @@ function GeneratedVideoPlayerOverlay({
             <Volume2 className="h-4 w-4" />
             <input type="range" min={0} max={100} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-20 accent-accent-cyan" aria-label="Volume" />
           </label>
-          <div className="inline-flex h-9 w-fit items-center rounded-[var(--radius-md)] border border-white/10 bg-white/10 px-2.5 text-xs text-white/72">
+          <div className="inline-flex h-9 w-fit items-center rounded-(--radius-md) border border-white/10 bg-white/10 px-2.5 text-xs text-white/72">
             {generation.videoSize ?? "1080p"} / {durationSeconds}s
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => onDownload(generation)} className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] border border-white/10 text-white/70 transition hover:text-white" aria-label="Download generated video">
+            <button type="button" onClick={() => onDownload(generation)} className="grid h-9 w-9 place-items-center rounded-(--radius-md) border border-white/10 text-white/70 transition hover:text-white" aria-label="Download generated video">
               <Download className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => setFullscreen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] border border-white/10 text-white/70 transition hover:text-white" aria-label="Toggle fullscreen">
+            <button type="button" onClick={() => setFullscreen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-(--radius-md) border border-white/10 text-white/70 transition hover:text-white" aria-label="Toggle fullscreen">
               <Maximize2 className="h-4 w-4" />
             </button>
           </div>
@@ -2405,10 +2405,10 @@ function GenerationDetailModal({
 
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(event) => trapFocus(event, modalRef.current, onClose)} className="fixed inset-0 z-50 overflow-y-auto bg-black/82 p-3 backdrop-blur-md md:p-6">
-      <section className="mx-auto min-h-full max-w-[980px] overflow-hidden rounded-[var(--radius-lg)] border border-white/10 bg-[#07090b] shadow-2xl">
+      <section className="mx-auto min-h-full max-w-[980px] overflow-hidden rounded-(--radius-lg) border border-white/10 bg-[#07090b] shadow-2xl">
         <div className="relative min-h-[460px] overflow-hidden">
           <MediaPoster media={generation} className="absolute inset-0 h-full w-full opacity-70 transition-transform duration-1000" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/94 via-black/58 to-black/10" />
+          <div className="absolute inset-0 bg-linear-to-r from-black/94 via-black/58 to-black/10" />
           <button type="button" onClick={onClose} className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition hover:border-accent-cyan hover:text-accent-cyan" aria-label="Close generation detail">
             <X className="h-4 w-4" />
           </button>
@@ -2468,7 +2468,7 @@ function CardDetailModal({
   }, [])
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={(event) => trapFocus(event, modalRef.current, onClose)} className="fixed inset-0 z-50 overflow-y-auto bg-black/82 p-3 backdrop-blur-md md:p-6">
-      <section className="mx-auto min-h-full max-w-[980px] overflow-hidden rounded-[var(--radius-lg)] border border-white/10 bg-[#07090b] shadow-2xl">
+      <section className="mx-auto min-h-full max-w-[980px] overflow-hidden rounded-(--radius-lg) border border-white/10 bg-[#07090b] shadow-2xl">
         <div className="relative min-h-[360px] overflow-hidden">
           {card.images[0] ? (
             <MediaPoster
@@ -2482,14 +2482,14 @@ function CardDetailModal({
               className="absolute inset-0 h-full w-full opacity-55"
             />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/94 via-black/72 to-black/22" />
+          <div className="absolute inset-0 bg-linear-to-r from-black/94 via-black/72 to-black/22" />
           <button type="button" onClick={onClose} className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/50 text-white transition hover:border-accent-cyan hover:text-accent-cyan" aria-label="Close card detail">
             <X className="h-4 w-4" />
           </button>
           <div className="relative z-10 max-w-2xl p-5 pt-20 md:p-8 md:pt-24">
             <p className="font-heading text-xs font-semibold uppercase tracking-[0.16em] text-accent-cyan">{libraryLabels[card.type]}</p>
             <input value={name} onChange={(event) => setName(event.target.value)} className="mt-3 w-full bg-transparent font-heading text-3xl font-bold leading-none text-white outline-none md:text-5xl" />
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="mt-4 min-h-16 w-full resize-none rounded-[var(--radius-md)] border border-white/10 bg-black/30 p-3 text-sm leading-6 text-white/80 outline-none focus:border-accent-cyan" />
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="mt-4 min-h-16 w-full resize-none rounded-(--radius-md) border border-white/10 bg-black/30 p-3 text-sm leading-6 text-white/80 outline-none focus:border-accent-cyan" />
             <div className="mt-5 flex flex-wrap gap-2">
               <Button className="h-9 bg-accent-cyan px-3 text-xs text-black hover:brightness-110" onClick={() => onRename(name, description)}>Rename</Button>
               <Button variant="danger" className="h-9 px-3 text-xs" onClick={onDelete}><Trash2 className="h-4 w-4" />Delete</Button>
@@ -2498,7 +2498,7 @@ function CardDetailModal({
         </div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
           {card.images.map((image) => (
-            <article key={image.id} className="relative overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-surface">
+            <article key={image.id} className="relative overflow-hidden rounded-(--radius-md) border border-border-subtle bg-surface">
               <MediaPoster
                 media={{
                   prompt: image.prompt,

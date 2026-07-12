@@ -46,8 +46,8 @@ export function SendToWorkspaceButton({
   }
 
   const baseClass = variant === "primary"
-    ? "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent-cyan px-3 py-1.5 font-heading text-[11px] font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-accent-cyan/40 px-3 py-1.5 font-heading text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-cyan transition hover:bg-accent-cyan-dim disabled:cursor-not-allowed disabled:opacity-50"
+    ? "inline-flex items-center gap-1.5 rounded-(--radius-md) bg-accent-cyan px-3 py-1.5 font-heading text-[11px] font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+    : "inline-flex items-center gap-1.5 rounded-(--radius-md) border border-accent-cyan/40 px-3 py-1.5 font-heading text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-cyan transition hover:bg-accent-cyan-dim disabled:cursor-not-allowed disabled:opacity-50"
 
   return (
     <>

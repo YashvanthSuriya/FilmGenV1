@@ -33,9 +33,9 @@ export function NodesGuideModal({ open, onClose }: { open: boolean; onClose: () 
             {nodeGuides.map((guide) => {
               const Icon = guide.icon
               return (
-                <div key={guide.type} className="rounded-[var(--radius-md)] border border-border-subtle bg-background p-3">
+                <div key={guide.type} className="rounded-(--radius-md) border border-border-subtle bg-background p-3">
                   <div className="flex items-start gap-3">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-md)] bg-accent-cyan-dim text-accent-cyan">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-(--radius-md) bg-accent-cyan-dim text-accent-cyan">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export function NodesGuideModal({ open, onClose }: { open: boolean; onClose: () 
             })}
           </div>
 
-          <div className="mt-4 rounded-[var(--radius-md)] border border-accent-cyan/30 bg-accent-cyan-dim p-3 text-xs text-accent-cyan">
+          <div className="mt-4 rounded-(--radius-md) border border-accent-cyan/30 bg-accent-cyan-dim p-3 text-xs text-accent-cyan">
             <p className="font-semibold">Tip: Hover the ? icon on any node in the workspace to see a quick summary of what it does.</p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export function NodesGuideModal({ open, onClose }: { open: boolean; onClose: () 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[var(--radius-md)] bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110"
+            className="rounded-(--radius-md) bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110"
           >
             Got it
           </button>

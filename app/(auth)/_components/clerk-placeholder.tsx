@@ -9,7 +9,7 @@ export function ClerkPlaceholder({ mode, allowDemo = false }: ClerkPlaceholderPr
   const action = mode === "sign-in" ? "Sign in" : "Create account"
 
   return (
-    <div className="space-y-5 rounded-[var(--radius-lg)] bg-background p-6 text-center">
+    <div className="space-y-5 rounded-(--radius-lg) bg-background p-6 text-center">
       <div>
         <p className="font-heading text-xs font-semibold uppercase tracking-[0.08em] text-accent-cyan">
           Local auth setup

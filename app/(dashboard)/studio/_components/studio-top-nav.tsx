@@ -80,7 +80,7 @@ export function StudioTopNav({ activeTab, userId, email, demoAuth = false }: Stu
 
   return (
     <div className="sticky top-0 z-40 bg-surface">
-      <header className="grid h-[var(--nav-height)] grid-cols-[1fr_auto_1fr] items-center border-b border-border-subtle px-4">
+      <header className="grid h-(--nav-height) grid-cols-[1fr_auto_1fr] items-center border-b border-border-subtle px-4">
         <Link href="/studio?tab=storyboard" className="justify-self-start">
           <BrandLogo compact />
         </Link>
@@ -261,7 +261,7 @@ export function StudioTopNav({ activeTab, userId, email, demoAuth = false }: Stu
                   type="button"
                   onClick={() => setTab(tab)}
                   className={cn(
-                    "flex h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 text-left text-sm transition",
+                    "flex h-11 items-center gap-3 rounded-(--radius-md) px-3 text-left text-sm transition",
                     active ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:bg-elevated hover:text-text-primary"
                   )}
                 >
@@ -285,7 +285,7 @@ export function StudioTopNav({ activeTab, userId, email, demoAuth = false }: Stu
                     type="button"
                     onClick={() => selectMobileProject(project.id)}
                     className={cn(
-                      "rounded-[var(--radius-md)] px-3 py-2 text-left text-sm transition",
+                      "rounded-(--radius-md) px-3 py-2 text-left text-sm transition",
                       active ? "bg-accent-cyan-dim text-accent-cyan" : "text-text-secondary hover:bg-elevated hover:text-text-primary"
                     )}
                   >
@@ -300,7 +300,7 @@ export function StudioTopNav({ activeTab, userId, email, demoAuth = false }: Stu
                 type="button"
                 disabled={projects.length >= 5}
                 onClick={createMobileProject}
-                className="mt-1 flex h-10 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border-subtle text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-1 flex h-10 items-center justify-center gap-2 rounded-(--radius-md) border border-border-subtle text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 New project

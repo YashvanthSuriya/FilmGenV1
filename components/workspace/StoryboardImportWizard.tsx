@@ -118,7 +118,7 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.2rem] border border-border-subtle bg-surface shadow-2xl">
         <header className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-accent-cyan-dim text-accent-cyan">
+            <div className="grid h-9 w-9 place-items-center rounded-(--radius-md) bg-accent-cyan-dim text-accent-cyan">
               <Layers className="h-4 w-4" />
             </div>
             <div>
@@ -138,7 +138,7 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
 
         <div className="max-h-[60vh] overflow-y-auto p-5">
           {generations.length === 0 ? (
-            <div className="grid min-h-[200px] place-items-center rounded-[var(--radius-md)] border border-dashed border-border-subtle p-6 text-center">
+            <div className="grid min-h-[200px] place-items-center rounded-(--radius-md) border border-dashed border-border-subtle p-6 text-center">
               <div>
                 <p className="font-heading text-base font-semibold text-text-primary">No Storyboard generations yet</p>
                 <p className="mt-1 text-xs text-text-secondary">Generate at least one image in the Storyboard tab to import it here.</p>
@@ -164,7 +164,7 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
                       key={gen.id}
                       type="button"
                       onClick={() => toggle(gen.id)}
-                      className={`flex items-center gap-3 rounded-[var(--radius-md)] border p-2 text-left transition ${
+                      className={`flex items-center gap-3 rounded-(--radius-md) border p-2 text-left transition ${
                         selected
                           ? "border-accent-cyan bg-accent-cyan-dim"
                           : "border-border-subtle bg-background hover:border-border-strong"
@@ -231,12 +231,12 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
                   type="checkbox"
                   checked={includeAction}
                   onChange={(event) => setIncludeAction(event.target.checked)}
-                  className="h-3.5 w-3.5 accent-[var(--accent-cyan)]"
+                  className="h-3.5 w-3.5 accent-(--accent-cyan)"
                 />
                 Also attach the first action card ({actionCards[0]?.title ?? "none"}) to every shot
               </label>
 
-              <div className="mt-5 rounded-[var(--radius-md)] border border-border-subtle bg-background p-3 text-[11px] text-text-muted">
+              <div className="mt-5 rounded-(--radius-md) border border-border-subtle bg-background p-3 text-[11px] text-text-muted">
                 <p className="font-semibold text-text-secondary">Preview of the graph that will be built:</p>
                 <ul className="mt-1.5 list-disc pl-4">
                   <li>{selectedIds.size} Prompt + Camera + Image Output cluster{selectedIds.size === 1 ? "" : "s"}, stacked vertically</li>
@@ -259,7 +259,7 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
             <button
               type="button"
               onClick={onClose}
-              className="rounded-[var(--radius-md)] border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-elevated"
+              className="rounded-(--radius-md) border border-border-subtle px-3 py-2 text-xs text-text-secondary hover:bg-elevated"
             >
               Cancel
             </button>
@@ -267,7 +267,7 @@ export function StoryboardImportWizard({ open, onClose }: { open: boolean; onClo
               type="button"
               onClick={apply}
               disabled={selectedIds.size === 0}
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-(--radius-md) bg-accent-cyan px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Build workspace
               <ArrowRight className="h-3 w-3" />

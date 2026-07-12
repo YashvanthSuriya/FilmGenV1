@@ -243,7 +243,7 @@ function WorkspaceCanvasInner() {
       <NodePalette onAddNode={(type) => createNode(type)} />
       <main className="relative min-w-0 flex-1">
         {/* Consolidated top toolbar (Director pill removed per "Minimal" choice) */}
-        <div className="absolute left-4 right-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-1.5 shadow-md">
+        <div className="absolute left-4 right-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-(--radius-md) border border-border-subtle bg-surface/95 p-1.5 shadow-md">
           <div className="relative">
             <button
               type="button"
@@ -255,7 +255,7 @@ function WorkspaceCanvasInner() {
               Templates
             </button>
             {templateMenuOpen ? (
-              <div className="absolute left-0 top-10 w-72 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] border border-border bg-overlay p-2 text-sm text-text-secondary shadow-lg">
+              <div className="absolute left-0 top-10 w-72 max-w-[calc(100vw-2rem)] rounded-(--radius-md) border border-border bg-overlay p-2 text-sm text-text-secondary shadow-lg">
                 <div className="px-3 py-1 font-heading text-[10px] uppercase tracking-[0.08em] text-text-muted">From Storyboard</div>
                 <button
                   type="button"
@@ -263,7 +263,7 @@ function WorkspaceCanvasInner() {
                     setTemplateMenuOpen(false)
                     setWizardOpen(true)
                   }}
-                  className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
+                  className="block w-full rounded-(--radius-sm) px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
                 >
                   <span className="block font-heading text-xs font-semibold uppercase tracking-[0.08em] text-accent-amber">From Storyboard…</span>
                   <span className="mt-1 block text-xs leading-5 text-text-muted">Pick frames + style + character with a wizard.</span>
@@ -275,7 +275,7 @@ function WorkspaceCanvasInner() {
                     key={template.id}
                     type="button"
                     onClick={() => applyTemplate(template.id)}
-                    className="block w-full rounded-[var(--radius-sm)] px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
+                    className="block w-full rounded-(--radius-sm) px-3 py-2 text-left transition hover:bg-elevated hover:text-text-primary"
                   >
                     <span className="block font-heading text-xs font-semibold uppercase tracking-[0.08em] text-accent-cyan">{template.name}</span>
                     <span className="mt-1 block text-xs leading-5 text-text-muted">{template.description}</span>
@@ -406,7 +406,7 @@ function WorkspaceCanvasInner() {
         >
           <Background color="rgba(255,255,255,0.08)" gap={24} />
           <Controls className="!border-border-subtle !bg-surface !shadow-md" position="bottom-left" />
-          <MiniMap nodeColor="#00E5FF" maskColor="rgba(8,8,8,0.72)" className="!border !border-border-subtle !bg-surface" position="bottom-right" />
+          <MiniMap nodeColor="#00E5FF" maskColor="rgba(8,8,8,0.72)" className="border! !border-border-subtle !bg-surface" position="bottom-right" />
         </ReactFlow>
 
         {connectionError ? <ConnectionNotice message={connectionError} onClose={() => setConnectionError(null)} /> : null}
@@ -435,7 +435,7 @@ function ConnectionNotice({ message, onClose }: { message: string; onClose: () =
     <button
       type="button"
       onClick={onClose}
-      className="absolute left-1/2 top-4 z-30 max-w-md -translate-x-1/2 rounded-[var(--radius-md)] border border-accent-amber bg-overlay px-4 py-2 text-sm text-accent-amber shadow-lg"
+      className="absolute left-1/2 top-4 z-30 max-w-md -translate-x-1/2 rounded-(--radius-md) border border-accent-amber bg-overlay px-4 py-2 text-sm text-accent-amber shadow-lg"
     >
       {message}
     </button>
@@ -464,7 +464,7 @@ function NextNodeSuggestions({
   const expanded = expandedNodeId === selectedNode.id
 
   return (
-    <div className="absolute left-1/2 top-20 z-20 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 p-1.5 shadow-md backdrop-blur">
+    <div className="absolute left-1/2 top-20 z-20 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-(--radius-md) border border-border-subtle bg-surface/95 p-1.5 shadow-md backdrop-blur">
       <button
         type="button"
         onMouseDown={(event) => event.stopPropagation()}
@@ -472,7 +472,7 @@ function NextNodeSuggestions({
           event.stopPropagation()
           onToggle(selectedNode.id)
         }}
-        className="flex h-8 items-center gap-2 rounded-[var(--radius-sm)] px-2 text-xs text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
+        className="flex h-8 items-center gap-2 rounded-(--radius-sm) px-2 text-xs text-text-secondary transition hover:bg-elevated hover:text-accent-cyan"
       >
         <span className="font-heading font-semibold uppercase tracking-[0.08em]">Add next</span>
         <span className="truncate text-text-muted">{suggestions.length}</span>
@@ -507,7 +507,7 @@ function NextNodeSuggestions({
 
 function StatusBar({ nodeCount, edgeCount, saved, lastSaved }: { nodeCount: number; edgeCount: number; saved: boolean; lastSaved: string }) {
   return (
-    <div className="pointer-events-none absolute right-4 top-20 z-20 flex h-8 items-center gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface/95 px-3 text-[11px] text-text-secondary shadow-md">
+    <div className="pointer-events-none absolute right-4 top-20 z-20 flex h-8 items-center gap-3 rounded-(--radius-md) border border-border-subtle bg-surface/95 px-3 text-[11px] text-text-secondary shadow-md">
       <span>{nodeCount}n</span>
       <span>{edgeCount}e</span>
       <span className="flex items-center gap-1 text-accent-green">
@@ -543,7 +543,7 @@ function ContextMenu({
   if (!menu) return null
 
   return (
-    <div className="fixed z-50 min-w-52 rounded-[var(--radius-md)] border border-border bg-overlay p-1 text-sm text-text-secondary shadow-lg" style={{ left: menu.x, top: menu.y }}>
+    <div className="fixed z-50 min-w-52 rounded-(--radius-md) border border-border bg-overlay p-1 text-sm text-text-secondary shadow-lg" style={{ left: menu.x, top: menu.y }}>
       {menu.kind === "canvas" ? (
         <>
           <div className="px-3 py-2 font-heading text-xs uppercase text-text-muted">Add Node</div>

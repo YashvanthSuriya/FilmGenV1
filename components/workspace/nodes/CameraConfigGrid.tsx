@@ -132,7 +132,7 @@ export function CameraConfigGrid({
               type="button"
               onClick={() => update({ focalLength: option })}
               className={cn(
-                "grid place-items-center rounded-[var(--radius-md)] border bg-background text-center font-heading transition",
+                "grid place-items-center rounded-(--radius-md) border bg-background text-center font-heading transition",
                 compact ? "min-h-12" : "min-h-16",
                 safeCamera.focalLength === option ? "border-accent-cyan text-accent-cyan shadow-cyan" : "border-border-subtle text-text-muted hover:border-border-strong hover:text-text-secondary"
               )}
@@ -217,7 +217,7 @@ function OptionColumn({ title, children, compact }: { title: string; children: R
   return (
     <section>
       <h3 className={cn("mb-2 text-center font-heading text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted", compact && "text-[9px]")}>{title}</h3>
-      <div className={cn("camera-option-scroll grid gap-2 overflow-y-auto rounded-[var(--radius-md)] border border-border-subtle bg-black/30 p-2", compact ? "max-h-40" : "max-h-56")}>
+      <div className={cn("camera-option-scroll grid gap-2 overflow-y-auto rounded-(--radius-md) border border-border-subtle bg-black/30 p-2", compact ? "max-h-40" : "max-h-56")}>
         {children}
       </div>
     </section>
@@ -244,12 +244,12 @@ function VisualOption({
       type="button"
       onClick={onClick}
       className={cn(
-        "group grid place-items-center rounded-[var(--radius-md)] border bg-background p-2 text-center transition",
+        "group grid place-items-center rounded-(--radius-md) border bg-background p-2 text-center transition",
         compact ? "min-h-16" : "min-h-24",
         active ? "border-accent-cyan text-text-primary shadow-cyan" : "border-border-subtle text-text-muted hover:border-border-strong hover:text-text-secondary"
       )}
     >
-      <span className={cn("grid place-items-center rounded-[var(--radius-md)] border", compact ? "h-9 w-12" : "h-12 w-16", active ? "border-accent-cyan bg-accent-cyan-dim" : "border-border bg-elevated")}>
+      <span className={cn("grid place-items-center rounded-(--radius-md) border", compact ? "h-9 w-12" : "h-12 w-16", active ? "border-accent-cyan bg-accent-cyan-dim" : "border-border bg-elevated")}>
         <Icon className={compact ? "h-4 w-4" : "h-6 w-6"} />
       </span>
       <span className={cn("mt-2 font-heading font-bold uppercase tracking-[0.04em]", compact ? "text-[9px]" : "text-[10px]")}>{label}</span>

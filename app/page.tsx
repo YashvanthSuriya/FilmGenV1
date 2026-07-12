@@ -1,74 +1,10 @@
 import Link from "next/link"
-import { ArrowRight, Clapperboard, Film, Sparkles } from "lucide-react"
+import { ArrowRight, Clapperboard, CreditCard, Sparkles, WandSparkles } from "lucide-react"
 import { BrandLogo } from "@/components/brand-logo"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 
-const pillars = [
-  { label: "Storyboard", icon: Clapperboard },
-  { label: "Workspace", icon: Sparkles },
-  { label: "Editing", icon: Film }
-]
+const system = ["Build a visual language", "Direct each shot", "Cut the film"]
 
 export default function HomePage() {
-  return (
-    <main className="min-h-screen bg-background text-text-primary">
-      <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5">
-        <header className="flex items-center justify-between">
-          <BrandLogo />
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild variant="primary">
-              <Link href="/sign-up">Start</Link>
-            </Button>
-          </div>
-        </header>
-
-        <div className="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <p className="font-heading text-xs font-semibold uppercase tracking-[0.12em] text-accent-cyan">
-              FilmGen Studio
-            </p>
-            <h1 className="mt-4 max-w-3xl font-heading text-5xl font-bold leading-tight text-text-primary sm:text-6xl">
-              AI film creation from story cards to final edit.
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg text-text-secondary">
-              Plan shots, arrange creative direction, and stage the final edit from one protected studio shell.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild variant="primary" size="lg">
-                <Link href="/sign-up">
-                  Create account
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-            </div>
-          </div>
-
-          <Card className="p-4">
-            <div className="grid gap-3">
-              {pillars.map(({ label, icon: Icon }, index) => (
-                <div key={label} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-elevated p-4">
-                  <div className="grid h-11 w-11 place-items-center rounded-[var(--radius-md)] bg-accent-cyan-dim text-accent-cyan">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-heading text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
-                      Step {index + 1}
-                    </p>
-                    <p className="font-heading text-lg font-semibold text-text-primary">{label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </section>
-    </main>
-  )
+  return <main className="min-h-screen overflow-hidden bg-[#060809] text-text-primary"><div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-5 md:px-9"><div className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_76%_20%,rgba(70,224,197,.18),transparent_27%),radial-gradient(circle_at_20%_35%,rgba(255,174,87,.11),transparent_25%)]"/><header className="relative flex items-center justify-between"><BrandLogo/><div className="flex gap-2"><Button asChild variant="ghost"><Link href="/sign-in">Sign in</Link></Button><Button asChild variant="primary"><Link href="/sign-up">Start creating</Link></Button></div></header><section className="relative grid flex-1 items-center gap-12 py-16 lg:grid-cols-[1.1fr_.9fr]"><div><p className="font-heading text-xs font-bold uppercase tracking-[.2em] text-[#67e5d1]">FilmGen · creative operating system</p><h1 className="mt-5 max-w-4xl font-heading text-5xl font-bold leading-[.94] tracking-[-.045em] sm:text-7xl">Make films with intent, not a pile of tools.</h1><p className="mt-6 max-w-xl text-lg leading-8 text-text-secondary">From visual language and shot direction to a precise first cut — FilmGen keeps the creative decisions, references, and edit in one focused studio.</p><div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg" variant="primary"><Link href="/sign-up">Start your first film <ArrowRight className="h-4 w-4"/></Link></Button><span className="inline-flex items-center gap-2 rounded-full border border-[#35524f] bg-[#0c1516] px-4 py-2 text-sm text-[#c5dbd8]"><WandSparkles className="h-4 w-4 text-[#67e5d1]"/> Your first 5 generations are free</span></div><p className="mt-3 text-xs text-text-muted">Cost is always shown before you generate. No hidden credit drain.</p></div><div className="relative rounded-2xl border border-[#2a4542] bg-[#0b1114]/90 p-3 shadow-2xl shadow-black/40 backdrop-blur"><div className="aspect-[4/3] rounded-xl border border-white/10 bg-[linear-gradient(145deg,#16292d,#0b0d10_52%,#3a2112)] p-5"><div className="flex h-full flex-col justify-between"><div className="flex justify-between text-[10px] font-bold uppercase tracking-[.18em] text-white/60"><span>Sequence 01</span><span>24 fps</span></div><div><p className="font-heading text-3xl font-bold">NEON SIGNAL</p><p className="mt-2 max-w-xs text-sm leading-6 text-white/60">A detective follows a coded weather report through a flooded city.</p></div><div className="grid grid-cols-3 gap-2">{system.map((item,index)=><div className="rounded-lg border border-white/10 bg-black/25 p-2" key={item}><span className="text-[10px] text-[#67e5d1]">0{index+1}</span><p className="mt-1 text-xs text-white/80">{item}</p></div>)}</div></div></div><div className="mt-3 grid grid-cols-2 gap-3"><div className="rounded-lg border border-white/10 bg-white/[.03] p-3"><CreditCard className="h-4 w-4 text-[#ffb657]"/><p className="mt-2 text-sm font-semibold">Transparent preflight</p><p className="mt-1 text-xs text-text-secondary">Every creative decision shows its cost before commit.</p></div><div className="rounded-lg border border-white/10 bg-white/[.03] p-3"><Clapperboard className="h-4 w-4 text-[#67e5d1]"/><p className="mt-2 text-sm font-semibold">Director-grade flow</p><p className="mt-1 text-xs text-text-secondary">Cards, graph direction, review, and editorial in one place.</p></div></div></div></section><footer className="relative flex items-center gap-2 border-t border-white/10 py-4 text-xs text-text-muted"><Sparkles className="h-3.5 w-3.5 text-[#67e5d1]"/> Built for filmmakers who care about the frame.</footer></div></main>
 }

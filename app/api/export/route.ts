@@ -8,7 +8,7 @@ const exportRequestSchema = z.object({
   format: z.enum(["mp4", "webm", "mov"]).default("mp4"),
   resolution: z.enum(["720p", "1080p", "4k"]).default("1080p"),
   fps: z.union([z.literal(24), z.literal(30), z.literal(60)]).default(24),
-  timeline: z.record(z.unknown()).optional(),
+  timeline: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function POST(req: Request) {

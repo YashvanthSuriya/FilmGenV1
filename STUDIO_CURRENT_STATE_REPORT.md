@@ -26,7 +26,7 @@ The Studio has a real UI, real local state, local project switching, editable st
 
 Current high-level product truth:
 
-- The Studio is branded visually as `CINE STUDIO` in the logo, while app metadata and docs call the product FilmGen.
+- The Studio is branded visually as `FILMGEN` in the logo, while app metadata and docs call the product FilmGen.
 - State is stored with Zustand and browser localStorage.
 - Media blob helpers exist for IndexedDB, but most visible media is static demo data or remote Unsplash imagery.
 - Convex is wired as a provider shell, but Studio UI does not use live Convex queries or mutations yet.
@@ -137,7 +137,7 @@ The top nav is sticky at the top and has a fixed height from `--nav-height` curr
 
 Desktop layout:
 
-- Left: compact `CINE STUDIO` brand logo linking to `/studio?tab=storyboard`
+- Left: compact `FILMGEN` brand logo linking to `/studio?tab=storyboard`
 - Center: pill-shaped tab nav
 - Right: project menu, mobile menu button hidden on desktop, notifications button, user menu
 
@@ -1479,7 +1479,7 @@ Major implementation truth gaps:
 
 Content/label issues:
 
-- `CINE STUDIO` brand name conflicts with FilmGen naming.
+- `FILMGEN` brand name conflicts with FilmGen naming.
 - "Cinema Studio 3.5" appears in Amateur mode but is not explained elsewhere.
 - "Prompt Injection" appears as a label in Storyboard stitching and should be renamed before production.
 - "Account-ready projects" appears in project menu, but projects are browser-local only.

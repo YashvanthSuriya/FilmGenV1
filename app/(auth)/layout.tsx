@@ -7,7 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mb-8 flex justify-center">
           <BrandLogo />
         </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-3 shadow-2xl">
+        <div className="rounded-(--radius-lg) border border-border bg-surface p-3 shadow-2xl">
           {children}
         </div>
       </div>

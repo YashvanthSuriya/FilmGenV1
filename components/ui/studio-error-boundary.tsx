@@ -20,9 +20,9 @@ export class StudioErrorBoundary extends React.Component<{ children: React.React
 
     return (
       <main className="grid min-h-[calc(100vh-var(--nav-height))] place-items-center bg-background p-6">
-        <section className="w-full max-w-lg rounded-[var(--radius-lg)] border border-accent-red bg-surface p-5 shadow-lg">
+        <section className="w-full max-w-lg rounded-(--radius-lg) border border-accent-red bg-surface p-5 shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-accent-red-dim">
+            <div className="grid h-10 w-10 place-items-center rounded-(--radius-md) bg-accent-red-dim">
               <AlertTriangle className="h-5 w-5 text-accent-red" />
             </div>
             <div>

@@ -63,7 +63,7 @@ export function ChallengesTab() {
               <Metric icon={Users} label="Entrants" value={selectedChallenge.participantCount.toLocaleString()} />
             </div>
             <p className="mt-4 text-sm text-white/60">{selectedChallenge.prizePlacement}</p>
-            <button type="button" onClick={() => openSubmissionModal(selectedChallenge.id)} className="mt-7 inline-flex h-12 items-center gap-2 rounded-[var(--radius-md)] bg-accent-cyan px-5 font-heading text-sm font-bold uppercase tracking-[0.08em] text-black transition hover:brightness-110">
+            <button type="button" onClick={() => openSubmissionModal(selectedChallenge.id)} className="mt-7 inline-flex h-12 items-center gap-2 rounded-(--radius-md) bg-accent-cyan px-5 font-heading text-sm font-bold uppercase tracking-[0.08em] text-black transition hover:brightness-110">
               <Send className="h-4 w-4" />
               Submit Project
             </button>
@@ -89,7 +89,7 @@ export function ChallengesTab() {
               renderCard={(item, { active }) => <WinnerStackCard item={item} active={active} />}
             />
             {activeWinner ? (
-              <div className="mx-auto mt-4 max-w-[560px] rounded-[var(--radius-md)] border border-white/10 bg-black/45 p-4 backdrop-blur">
+              <div className="mx-auto mt-4 max-w-[560px] rounded-(--radius-md) border border-white/10 bg-black/45 p-4 backdrop-blur">
                 <p className="font-heading text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-amber">{activeWinner.winner ? "Winner" : "Shortlist"}</p>
                 <h2 data-active-winner-title className="mt-2 font-heading text-2xl font-bold text-white">{activeWinner.title}</h2>
                 <p className="mt-1 text-xs text-white/60">by {activeWinner.creator} - {activeWinner.votes.toLocaleString()} votes</p>
@@ -115,7 +115,7 @@ export function ChallengesTab() {
 
 function Metric({ icon: Icon, label, value }: { icon: ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
-    <div className="rounded-[var(--radius-md)] border border-white/10 bg-white/10 p-3 backdrop-blur">
+    <div className="rounded-(--radius-md) border border-white/10 bg-white/10 p-3 backdrop-blur">
       <Icon className="h-4 w-4 text-accent-cyan" />
       <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-white/50">{label}</p>
       <p className="mt-1 font-heading text-sm font-bold text-white">{value}</p>
@@ -125,9 +125,9 @@ function Metric({ icon: Icon, label, value }: { icon: ComponentType<{ className?
 
 function WinnerStackCard({ item, active }: { item: CardStackItem; active: boolean }) {
   return (
-    <div className={`relative h-full w-full overflow-hidden rounded-[var(--radius-md)] border ${active ? "border-accent-amber" : "border-white/10"} bg-black`}>
+    <div className={`relative h-full w-full overflow-hidden rounded-(--radius-md) border ${active ? "border-accent-amber" : "border-white/10"} bg-black`}>
       <img src={item.imageSrc ?? thumbnailChoices[0]} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/12 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/88 via-black/12 to-transparent" />
       <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-accent-amber px-3 py-1 text-xs font-bold text-black">
         <Crown className="h-3.5 w-3.5" />
         {item.tag}
@@ -151,11 +151,11 @@ function ChallengeGrid({ selectedChallengeId, onSelect, onSubmit }: { selectedCh
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {filmChallenges.map((challenge) => (
-          <article key={challenge.id} className={`overflow-hidden rounded-[var(--radius-md)] border bg-surface shadow-lg shadow-black/20 transition ${selectedChallengeId === challenge.id ? "border-accent-cyan shadow-cyan" : "border-border-subtle hover:border-accent-cyan/70"}`}>
+          <article key={challenge.id} className={`overflow-hidden rounded-(--radius-md) border bg-surface shadow-lg shadow-black/20 transition ${selectedChallengeId === challenge.id ? "border-accent-cyan shadow-cyan" : "border-border-subtle hover:border-accent-cyan/70"}`}>
             <button type="button" onClick={() => onSelect(challenge.id)} className="block w-full text-left">
-              <div className="relative aspect-[16/9] overflow-hidden">
+              <div className="relative aspect-16/9 overflow-hidden">
                 <img src={challenge.themeImageUrl} alt={challenge.title} className="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent" />
                 <StatusBadge status={challenge.status} />
               </div>
               <div className="p-4">
@@ -170,7 +170,7 @@ function ChallengeGrid({ selectedChallengeId, onSelect, onSubmit }: { selectedCh
               </div>
             </button>
             {challenge.status === "Open" ? (
-              <button type="button" onClick={() => onSubmit(challenge.id)} className="mx-4 mb-4 inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle px-3 text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan">
+              <button type="button" onClick={() => onSubmit(challenge.id)} className="mx-4 mb-4 inline-flex h-9 items-center gap-2 rounded-(--radius-md) border border-border-subtle px-3 text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan">
                 <Upload className="h-4 w-4" />
                 Submit
               </button>
@@ -208,7 +208,7 @@ function VotingPanel({ challenge, submissions }: { challenge: FilmChallenge; sub
           <p className="font-heading text-xs font-semibold uppercase tracking-[0.12em] text-accent-cyan">Voting</p>
           <h2 className="mt-2 font-heading text-3xl font-bold text-text-primary">{challenge.title} submissions</h2>
         </div>
-        <select value={sortMode} onChange={(event) => setSortMode(event.target.value as ChallengeSortMode)} className="h-10 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-sm text-text-primary outline-none" aria-label="Sort submissions">
+        <select value={sortMode} onChange={(event) => setSortMode(event.target.value as ChallengeSortMode)} className="h-10 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-sm text-text-primary outline-none" aria-label="Sort submissions">
           {(["Most Voted", "Newest", "Random"] as const).map((item) => (
             <option key={item} value={item}>{item}</option>
           ))}
@@ -218,7 +218,7 @@ function VotingPanel({ challenge, submissions }: { challenge: FilmChallenge; sub
         {sortedSubmissions.map((submission) => {
           const voted = votedSubmissionIds.includes(submission.id)
           return (
-            <article key={submission.id} className="overflow-hidden rounded-[var(--radius-md)] border border-border-subtle bg-surface">
+            <article key={submission.id} className="overflow-hidden rounded-(--radius-md) border border-border-subtle bg-surface">
               <div className="relative aspect-video">
                 <img src={submission.thumbnailUrl} alt={submission.title} className="h-full w-full object-cover" loading="lazy" />
                 {submission.shortlisted ? <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-accent-amber">Jury shortlist</span> : null}
@@ -229,7 +229,7 @@ function VotingPanel({ challenge, submissions }: { challenge: FilmChallenge; sub
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{submission.description}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="font-heading text-sm font-bold text-accent-cyan">{submission.votes.toLocaleString()} votes</span>
-                  <button type="button" disabled={voted} onClick={() => upvoteSubmission(submission.id)} className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle px-3 text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-55">
+                  <button type="button" disabled={voted} onClick={() => upvoteSubmission(submission.id)} className="inline-flex h-9 items-center gap-2 rounded-(--radius-md) border border-border-subtle px-3 text-sm text-text-secondary transition hover:border-accent-cyan hover:text-accent-cyan disabled:cursor-not-allowed disabled:opacity-55">
                     {voted ? <Check className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
                     {voted ? "Voted" : "Upvote"}
                   </button>
@@ -250,7 +250,7 @@ function Leaderboard({ submissions }: { submissions: ChallengeSubmission[] }) {
   return (
     <aside className="space-y-4">
       {winner ? (
-        <section className="relative overflow-hidden rounded-[var(--radius-md)] border border-accent-amber bg-surface p-4">
+        <section className="relative overflow-hidden rounded-(--radius-md) border border-accent-amber bg-surface p-4">
           <div className="absolute inset-0 bg-accent-amber-dim" />
           <div className="relative">
             <Award className="h-6 w-6 text-accent-amber" />
@@ -260,14 +260,14 @@ function Leaderboard({ submissions }: { submissions: ChallengeSubmission[] }) {
           </div>
         </section>
       ) : null}
-      <section className="rounded-[var(--radius-md)] border border-border-subtle bg-surface p-4">
+      <section className="rounded-(--radius-md) border border-border-subtle bg-surface p-4">
         <div className="mb-4 flex items-center gap-2">
           <Flame className="h-5 w-5 text-accent-cyan" />
           <h2 className="font-heading text-xl font-bold text-text-primary">Top 10 Leaderboard</h2>
         </div>
         <ol className="space-y-2">
           {leaders.map((submission, index) => (
-            <li key={submission.id} className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-background/70 p-2">
+            <li key={submission.id} className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-(--radius-md) border border-border-subtle bg-background/70 p-2">
               <span className="font-heading text-sm font-bold text-text-muted">{index + 1}</span>
               <div className="min-w-0">
                 <p className="truncate font-heading text-sm font-semibold text-text-primary">{submission.title}</p>
@@ -320,7 +320,7 @@ function SubmissionModal() {
 
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="challenge-submit-title" tabIndex={-1} onKeyDown={(event) => trapFocus(event, modalRef.current, closeSubmissionModal)} className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md">
-      <div className="w-full max-w-2xl rounded-[var(--radius-lg)] border border-border-subtle bg-[#07090b] p-5 shadow-2xl">
+      <div className="w-full max-w-2xl rounded-(--radius-lg) border border-border-subtle bg-[#07090b] p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-heading text-xs font-semibold uppercase tracking-[0.12em] text-accent-cyan">Submit Project</p>
@@ -332,14 +332,14 @@ function SubmissionModal() {
         </div>
 
         {alreadySubmitted ? (
-          <div className="mt-5 rounded-[var(--radius-md)] border border-accent-amber bg-accent-amber-dim p-4 text-sm text-text-primary">
+          <div className="mt-5 rounded-(--radius-md) border border-accent-amber bg-accent-amber-dim p-4 text-sm text-text-primary">
             You already submitted to this challenge in the local demo state.
           </div>
         ) : (
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2 text-sm text-text-secondary">
               Project
-              <select value={projectId} onChange={(event) => setProjectId(event.target.value)} className="h-11 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-text-primary outline-none">
+              <select value={projectId} onChange={(event) => setProjectId(event.target.value)} className="h-11 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-text-primary outline-none">
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
@@ -347,17 +347,17 @@ function SubmissionModal() {
             </label>
             <label className="grid gap-2 text-sm text-text-secondary">
               Submission title
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="h-11 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 text-text-primary outline-none focus:border-accent-cyan" />
+              <input value={title} onChange={(event) => setTitle(event.target.value)} className="h-11 rounded-(--radius-md) border border-border-subtle bg-surface px-3 text-text-primary outline-none focus:border-accent-cyan" />
             </label>
             <label className="grid gap-2 text-sm text-text-secondary">
               Description
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 py-2 text-text-primary outline-none focus:border-accent-cyan" />
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-(--radius-md) border border-border-subtle bg-surface px-3 py-2 text-text-primary outline-none focus:border-accent-cyan" />
             </label>
             <div>
               <p className="mb-2 text-sm text-text-secondary">Thumbnail</p>
               <div className="grid gap-2 sm:grid-cols-3">
                 {thumbnailChoices.map((choice) => (
-                  <button key={choice} type="button" onClick={() => setThumbnailUrl(choice)} className={`overflow-hidden rounded-[var(--radius-md)] border ${thumbnailUrl === choice ? "border-accent-cyan" : "border-border-subtle"}`}>
+                  <button key={choice} type="button" onClick={() => setThumbnailUrl(choice)} className={`overflow-hidden rounded-(--radius-md) border ${thumbnailUrl === choice ? "border-accent-cyan" : "border-border-subtle"}`}>
                     <img src={choice} alt="Submission thumbnail option" className="aspect-video w-full object-cover" loading="lazy" />
                   </button>
                 ))}
@@ -371,8 +371,8 @@ function SubmissionModal() {
         )}
 
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={closeSubmissionModal} className="h-11 rounded-[var(--radius-md)] px-4 text-sm text-text-secondary transition hover:bg-elevated hover:text-text-primary">Cancel</button>
-          <button type="button" disabled={!acknowledged || alreadySubmitted} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-md)] bg-accent-cyan px-4 font-heading text-xs font-bold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="button" onClick={closeSubmissionModal} className="h-11 rounded-(--radius-md) px-4 text-sm text-text-secondary transition hover:bg-elevated hover:text-text-primary">Cancel</button>
+          <button type="button" disabled={!acknowledged || alreadySubmitted} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-(--radius-md) bg-accent-cyan px-4 font-heading text-xs font-bold uppercase tracking-[0.08em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45">
             <Send className="h-4 w-4" />
             Confirm Submission
           </button>

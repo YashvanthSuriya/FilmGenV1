@@ -491,8 +491,8 @@ function createEmptyProjectSlot(index: number): ProjectSlot {
 
 function createDemoProjectSlot(): ProjectSlot {
   return {
-    id: "demo-cine-studio",
-    projectId: "demo-cine-studio",
+    id: "demo-filmgen",
+    projectId: "demo-filmgen",
     name: "Neon Signal Demo",
     updatedAt: demoDate,
     version: 1,

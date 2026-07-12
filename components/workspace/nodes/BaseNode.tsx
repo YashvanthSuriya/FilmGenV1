@@ -47,14 +47,14 @@ export function BaseNode({
   return (
     <div
       className={cn(
-        "w-[248px] overflow-hidden rounded-[var(--radius-md)] border bg-node-bg text-text-primary shadow-md",
+        "w-[248px] overflow-hidden rounded-(--radius-md) border bg-node-bg text-text-primary shadow-md",
         selected ? "border-node-selected shadow-cyan" : "border-node-border",
         collapsed && "min-h-0",
         !collapsed && "min-h-[150px]",
         className
       )}
     >
-      <Handle type="target" position={Position.Left} className="!h-3 !w-3 !border-node-bg !bg-[var(--node-handle)]" />
+      <Handle type="target" position={Position.Left} className="!h-3 !w-3 !border-node-bg bg-(--node-handle)!" />
       <div className="flex h-8 items-center justify-between border-b border-border-subtle bg-elevated px-3">
         <div className="flex min-w-0 items-center gap-2">
           <Icon className="h-3.5 w-3.5 shrink-0 text-accent-cyan" />
@@ -93,7 +93,7 @@ export function BaseNode({
           {footer}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="!h-3 !w-3 !border-node-bg !bg-[var(--node-handle-active)]" />
+      <Handle type="source" position={Position.Right} className="!h-3 !w-3 !border-node-bg bg-(--node-handle-active)!" />
     </div>
   )
 }
@@ -156,7 +156,7 @@ function NodeHelpButton({ guide }: { guide: NonNullable<ReturnType<typeof nodeGu
             <div
               // Fixed positioning escapes any transformed/overflow-hidden ancestors.
               style={{ position: "fixed", top: coords.top, left: coords.left, width: 280, zIndex: 9999 }}
-              className="rounded-[var(--radius-md)] border border-border bg-overlay p-3 text-left shadow-xl"
+              className="rounded-(--radius-md) border border-border bg-overlay p-3 text-left shadow-xl"
               onMouseDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
               onMouseEnter={() => setOpen(true)}
