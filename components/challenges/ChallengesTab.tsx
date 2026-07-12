@@ -9,9 +9,9 @@ import { filmChallenges, useChallengesStore, type ChallengeSortMode, type Challe
 import { useProjectStore } from "@/lib/stores/project"
 
 const thumbnailChoices = [
-  "https://images.unsplash.com/photo-1519608487953-e999c86e7455a?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=900&q=80"
+  "/filmgen-reference/solaris-eclipse.png",
+  "/filmgen-reference/solaris-eclipse.png",
+  "/filmgen-reference/solaris-eclipse.png"
 ]
 
 const focusableSelector = [

@@ -9,7 +9,7 @@ export const storyboardTemplates: Template[] = [
     category: "Cinematic",
     cardType: "style",
     preview: "linear-gradient(135deg, rgba(0,229,255,0.32), rgba(3,5,9,0.96) 42%, rgba(255,184,0,0.18))",
-    imageUrl: "https://images.unsplash.com/photo-1519608487953-e999c86e7455a?auto=format&fit=crop&w=900&q=80",
+    imageUrl: "/filmgen-reference/solaris-eclipse.png",
     examples: ["Rain-lit alley key art", "Detective close-up with hard rim light", "Shadow-heavy urban frame"]
   },
   {
@@ -20,7 +20,7 @@ export const storyboardTemplates: Template[] = [
     category: "Concept",
     cardType: "storyboard",
     preview: "linear-gradient(135deg, rgba(77,125,255,0.34), rgba(6,10,18,0.94) 45%, rgba(0,229,255,0.2))",
-    imageUrl: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=900&q=80",
+    imageUrl: "/filmgen-reference/solaris-eclipse.png",
     examples: ["Orbital station establishing shot", "Minimal neon city plan", "Geometric interior exploration"]
   },
   {
@@ -31,7 +31,7 @@ export const storyboardTemplates: Template[] = [
     category: "Environment",
     cardType: "style",
     preview: "linear-gradient(135deg, rgba(0,255,148,0.22), rgba(8,13,10,0.96) 46%, rgba(255,184,0,0.2))",
-    imageUrl: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80",
+    imageUrl: "/filmgen-reference/solaris-eclipse.png",
     examples: ["Mountain citadel at dawn", "Magical forest reveal", "Painterly kingdom concept"]
   },
   {
@@ -42,7 +42,7 @@ export const storyboardTemplates: Template[] = [
     category: "Cinematic",
     cardType: "style",
     preview: "linear-gradient(135deg, rgba(0,229,255,0.32), rgba(6,7,12,0.96) 40%, rgba(255,69,69,0.2))",
-    imageUrl: "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=80",
+    imageUrl: "/filmgen-reference/solaris-eclipse.png",
     examples: ["Wet market chase", "Neon storefront profile", "Night traffic mood board"]
   },
   {
@@ -53,7 +53,7 @@ export const storyboardTemplates: Template[] = [
     category: "Character",
     cardType: "character",
     preview: "linear-gradient(135deg, rgba(155,89,255,0.32), rgba(9,8,18,0.96) 42%, rgba(0,229,255,0.24))",
-    imageUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
+    imageUrl: "/filmgen-reference/solaris-eclipse.png",
     examples: ["Lead character expression set", "Colorful action pose", "Stylized portrait card"]
   }
 ]
