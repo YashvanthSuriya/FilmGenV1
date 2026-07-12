@@ -45,7 +45,7 @@ export function EditorPlaceholder() {
   function addAsset(assetId: string, trackId: string) {
     const asset = assets.find((item) => item.id === assetId); if (!asset) return
     const kind = asset.type === "audio" ? "audio" : asset.type === "video" ? "video" : "image"
-    const clip: StudioClip = { id: `clip-${Date.now()}`, trackId, name: asset.name, kind, start: timeline.playhead, duration: asset.duration ?? (kind === "audio" ? 12 : 5), sourceUrl: asset.url, thumbnailUrl: asset.thumbnailUrl, volume: 100, fadeIn: 0, fadeOut: 0, color: kind === "audio" ? "#c084fc" : "#36d8c2" }
+    const clip: StudioClip = { id: `clip-${crypto.randomUUID()}`, trackId, name: asset.name, kind, start: timeline.playhead, duration: asset.duration ?? (kind === "audio" ? 12 : 5), sourceUrl: asset.url, thumbnailUrl: asset.thumbnailUrl, volume: 100, fadeIn: 0, fadeOut: 0, color: kind === "audio" ? "#c084fc" : "#36d8c2" }
     setTimeline((value) => addClip(value, clip)); setSelectedId(clip.id)
   }
   function updateSelected(patch: Partial<StudioClip>) { if (selected) setTimeline((value) => ({ ...value, clips: value.clips.map((clip) => clip.id === selected.id ? { ...clip, ...patch } : clip) })) }
